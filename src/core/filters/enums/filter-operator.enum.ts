@@ -1,0 +1,17 @@
+export enum FilterOperator {
+  EQ = 'eq',
+  NEQ = 'neq',
+  GT = 'gt',
+  GTE = 'gte',
+  LT = 'lt',
+  LTE = 'lte',
+  CONTAINS = 'contains',
+  NOT_CONTAINS = 'notContains',
+  STARTS_WITH = 'startsWith',
+  ENDS_WITH = 'endsWith',
+  IN = 'in',
+  NOT_IN = 'notIn',
+  IS_NULL = 'isNull',
+  IS_NOT_NULL = 'isNotNull',
+  BETWEEN = 'between',
+}

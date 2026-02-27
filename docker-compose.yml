@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # Base de Datos Maestra (Catálogo y Host de Inquilinos)
+  postgres_master:
+    image: postgres:15-alpine
+    container_name: multitenant_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      # Usamos el puerto libre 54321 para evitar colisiones nativas.
+      - "54321:5432"
+    volumes:
+      - pg_master_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # Aplicación NestJS (Opcional, si quieres correr todo encapsulado)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multitenant_api
+    depends_on:
+      - postgres_master
+    ports:
+      - "3000:3000"
+    environment:
+      # Si corre en Docker, debe apuntar al nombre del contenedor "postgres_master" y al puerto original 5432
+      - DB_MIGRATION_TEMP_URL=postgres://postgres:postgres@postgres_master:5432/postgres
+      - JWT_SECRET=SECRETO_SUPER_SEGURO_DOCKER
+    volumes:
+      - ./src:/usr/src/app/src
+    restart: unless-stopped
+
+volumes:
+  pg_master_data:
