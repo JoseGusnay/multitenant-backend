@@ -28,5 +28,3 @@ jobs:
         
       - name: Run Linter (Revisión de código limpio)
         run: yarn lint
-        
-     

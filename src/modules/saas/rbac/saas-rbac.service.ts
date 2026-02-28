@@ -1,4 +1,5 @@
 import { Injectable, OnApplicationBootstrap, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -16,15 +17,16 @@ export class SaasRbacService implements OnApplicationBootstrap {
     @InjectRepository(SaasRole) private readonly roleRepo: Repository<SaasRole>,
     @InjectRepository(SaasPermission)
     private readonly permRepo: Repository<SaasPermission>,
+    private readonly configService: ConfigService,
   ) {}
 
-  async onApplicationBootstrap() {
+  async onApplicationBootstrap(): Promise<void> {
     this.logger.log('Iniciando verificación de RBAC Master (SaaS Dueño)...');
     await this.seedPermissions();
     await this.seedSuperAdmin();
   }
 
-  private async seedPermissions() {
+  private async seedPermissions(): Promise<void> {
     for (const permName of SaasPermissionNames) {
       const exists = await this.permRepo.findOne({ where: { name: permName } });
       if (!exists) {
@@ -37,8 +39,20 @@ export class SaasRbacService implements OnApplicationBootstrap {
     }
   }
 
-  private async seedSuperAdmin() {
-    const adminEmail = 'creador@misaas.com';
+  private async seedSuperAdmin(): Promise<void> {
+    const adminEmail =
+      this.configService.get<string>('SAAS_ADMIN_EMAIL') ||
+      'creador@misaas.com';
+    const adminPassword =
+      this.configService.get<string>('SAAS_ADMIN_PASSWORD') ||
+      'SuperSecretOwnerPassword!';
+
+    if (adminEmail === 'creador@misaas.com') {
+      this.logger.warn(
+        '⚠️ IMPORTANTE: Usando email y contraseña por defecto para el Súper Admin. Por favor configura SAAS_ADMIN_EMAIL y SAAS_ADMIN_PASSWORD en tu archivo .env por seguridad.',
+      );
+    }
+
     const existingAdmin = await this.userRepo.findOne({
       where: { email: adminEmail },
     });
@@ -62,7 +76,7 @@ export class SaasRbacService implements OnApplicationBootstrap {
         await this.roleRepo.save(superRole);
       }
 
-      const hashedPassword = await bcrypt.hash('SuperSecretOwnerPassword!', 10);
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
       const newUser = this.userRepo.create({
         email: adminEmail,
         passwordHash: hashedPassword,
