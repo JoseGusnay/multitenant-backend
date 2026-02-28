@@ -12,6 +12,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "start:prod:docker": "npm run migration:master:run:prod && node dist/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -22,7 +23,8 @@
     "typeorm": "typeorm-ts-node-commonjs",
     "migration:tenant:generate": "npm run typeorm migration:generate src/database/migrations/tenant/ZeroTouchMigration -- -d src/database/tenant-orm.config.ts",
     "migration:master:generate": "npm run typeorm migration:generate src/database/migrations/master/MasterInitial -- -d src/database/master-orm.config.ts",
-    "seed:plans": "ts-node -r tsconfig-paths/register src/seed-plans.ts",
+    "migration:master:run": "npm run typeorm migration:run -- -d src/database/master-orm.config.ts",
+    "migration:master:run:prod": "npx typeorm migration:run -d dist/database/master-orm.config.js",
     "lint-staged": "lint-staged"
   },
   "lint-staged": {

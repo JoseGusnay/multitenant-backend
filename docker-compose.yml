@@ -1,6 +1,21 @@
 version: '3.8'
 
 services:
+  # Caddy: El Proxy Inverso (Recibe el tráfico de Internet web)
+  caddy:
+    image: caddy:2-alpine
+    container_name: multitenant_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80" # Puerto HTTP
+      - "443:443" # Puerto HTTPS
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
   # Base de Datos Maestra (Catálogo y Host de Inquilinos)
   postgres_master:
     image: postgres:15-alpine
@@ -9,30 +24,40 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
-    ports:
-      # Usamos el puerto libre 54321 para evitar colisiones nativas.
-      - "54321:5432"
+    # ports:
+    #   - "54321:5432" # ELIMINADO: Ahora es inaccesible desde Internet
+
     volumes:
       - pg_master_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
-  # Aplicación NestJS (Opcional, si quieres correr todo encapsulado)
+  # Aplicación NestJS Configurada para Producción
   api:
     build:
       context: .
       dockerfile: Dockerfile
+      target: production
     container_name: multitenant_api
     depends_on:
-      - postgres_master
-    ports:
-      - "3000:3000"
+      postgres_master:
+        condition: service_healthy
+    # ports:
+    #   - "3000:3000" # ELIMINADO: Ahora Caddy maneja el tráfico externo
+
     environment:
       # Si corre en Docker, debe apuntar al nombre del contenedor "postgres_master" y al puerto original 5432
       - DB_MIGRATION_TEMP_URL=postgres://postgres:postgres@postgres_master:5432/postgres
+      - DB_MASTER_URL=postgres://postgres:postgres@postgres_master:5432/postgres
       - JWT_SECRET=SECRETO_SUPER_SEGURO_DOCKER
-    volumes:
-      - ./src:/usr/src/app/src
+      - NODE_ENV=production
     restart: unless-stopped
 
 volumes:
   pg_master_data:
+  caddy_data:
+  caddy_config:

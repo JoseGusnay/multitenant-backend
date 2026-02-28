@@ -1,0 +1,35 @@
+name: Deploy to VPS Production
+
+on:
+  push:
+    branches:
+      - main  # Se ejecutará cada vez que hagas push a la rama principal
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          passphrase: ${{ secrets.VPS_SSH_PASSPHRASE }} # Opcional, si tu llave SSH tiene contraseña
+          port: 22
+          script: |
+            # Entramos a la carpeta del proyecto en el VPS (asegúrate de que exista)
+            cd /home/${{ secrets.VPS_USERNAME }}/multitenant-backend
+            
+            # Traemos los últimos cambios de GitHub
+            git pull origin main
+            
+            # Reconstruimos la imagen de la API sin caché y levantamos los contenedores
+            docker-compose up -d --build api
+            
+            # Limpiamos imágenes viejas que ya no se usan para no llenar el disco del VPS
+            docker image prune -f

@@ -1,0 +1,5 @@
+# Subdominio de la API de Producción
+api.osodreamer.lat {
+    # Redirige todo el tráfico web entrante hacia el contenedor de la API en el puerto 3000
+    reverse_proxy api:3000
+}
