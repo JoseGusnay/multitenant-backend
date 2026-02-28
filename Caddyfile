@@ -1,5 +1,5 @@
-# Pruebas temporales con la IP pública (Sin HTTPS)
-http://135.119.225.49 {
+# Subdominio de la API de Producción (HTTPS Automático)
+api.osodreamer.lat {
     # Redirige todo el tráfico web entrante hacia el contenedor de la API en el puerto 3000
     reverse_proxy api:3000
 }
