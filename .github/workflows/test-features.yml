@@ -1,0 +1,32 @@
+name: Test Features
+
+on:
+  push:
+    branches:
+      - 'feature/*' # Se ejecuta en subidas a cualquier rama que empiece con "feature/"
+      - 'bugfix/*'  # Se ejecuta en subidas a cualquier rama que empiece con "bugfix/"
+  pull_request:
+    branches:
+      - main # También se ejecuta cuando creas un PR ("propuesta de unión") hacia main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn' # Usa yarn para acelerar las instalaciones
+          
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+        
+      - name: Run Linter (Revisión de código limpio)
+        run: yarn lint
+        
+     
