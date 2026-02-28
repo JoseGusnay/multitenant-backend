@@ -39,10 +39,10 @@ export class SaasUser {
   phone: string;
 
   @Column({ nullable: true })
-  resetPasswordOtp: string;
+  resetPasswordOtp: string | null;
 
   @Column({ type: 'timestamp', nullable: true })
-  resetPasswordExpires: Date;
+  resetPasswordExpires: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

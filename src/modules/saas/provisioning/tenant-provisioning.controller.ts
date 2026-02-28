@@ -19,15 +19,16 @@ import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { SendCredentialsDto } from './dto/send-credentials.dto';
 import { UpdateTenantPlanDto } from './dto/update-tenant-plan.dto';
-import { GlobalAdminGuard } from '../auth/global-admin.guard';
+import { SaasPermissionGuard } from '../auth/saas-permission.guard';
+import { SaasPermission } from '../auth/saas-permission.decorator';
 import { Query } from '@nestjs/common';
 import { PageOptionsDto } from '../../../core/pagination/dto/page-options.dto';
 import { AdvancedFilterPipe } from '../../../core/filters/pipes/advanced-filter.pipe';
 import { FilterCondition } from '../../../core/filters/interfaces/filter-condition.interface';
 import { WhatsappService } from '../../notifications/whatsapp/whatsapp.service';
 
+@UseGuards(SaasPermissionGuard)
 @Controller('backoffice/tenants')
-@UseGuards(GlobalAdminGuard)
 export class TenantProvisioningController {
   constructor(
     private readonly provisioningService: TenantProvisioningService,
@@ -35,8 +36,17 @@ export class TenantProvisioningController {
     private readonly whatsappService: WhatsappService,
   ) {}
 
+  @SaasPermission('SAAS_TENANTS_CREATE')
   @Post('provision')
-  async provision(@Body() body: CreateTenantDto) {
+  async provision(@Body() body: CreateTenantDto): Promise<{
+    message: string;
+    data: {
+      id: string;
+      name: string;
+      subdomain: string;
+      databaseName: string | undefined;
+    };
+  }> {
     const tenant = await this.provisioningService.provisionNewTenant(body);
     return {
       message:
@@ -51,7 +61,9 @@ export class TenantProvisioningController {
   }
 
   @Post('send-credentials')
-  async sendCredentials(@Body() body: SendCredentialsDto) {
+  async sendCredentials(
+    @Body() body: SendCredentialsDto,
+  ): Promise<{ message: string }> {
     const sent = await this.whatsappService.sendTenantCredentials(body.phone, {
       tenantName: body.tenantName,
       subdomain: body.subdomain,
@@ -78,30 +90,36 @@ export class TenantProvisioningController {
     );
   }
 
+  @SaasPermission('SAAS_TENANTS_VIEW')
   @Get('stats')
-  async getStats() {
+  async getStats(): Promise<unknown> {
     return await this.provisioningService.getStats();
   }
 
+  @SaasPermission('SAAS_TENANTS_VIEW')
   @Get()
   async findAll(
     @Query() pageOptions: PageOptionsDto,
     @Query(AdvancedFilterPipe) filters: FilterCondition[],
-  ) {
+  ): Promise<unknown> {
     return await this.provisioningService.getAllTenants(pageOptions, filters);
   }
 
+  @SaasPermission('SAAS_TENANTS_VIEW')
   @Get(':subdomain')
-  async findOne(@Param('subdomain') subdomain: string) {
+  async findOne(
+    @Param('subdomain') subdomain: string,
+  ): Promise<{ data: unknown }> {
     const tenant = await this.provisioningService.getTenant(subdomain);
     return { data: tenant };
   }
 
+  @SaasPermission('SAAS_TENANTS_UPDATE')
   @Patch(':subdomain')
   async update(
     @Param('subdomain') subdomain: string,
     @Body() updateDto: UpdateTenantDto,
-  ) {
+  ): Promise<{ message: string; data: unknown }> {
     const tenant = await this.provisioningService.updateTenant(
       subdomain,
       updateDto,
@@ -109,11 +127,12 @@ export class TenantProvisioningController {
     return { message: 'Inquilino actualizado', data: tenant };
   }
 
+  @SaasPermission('SAAS_TENANTS_UPDATE')
   @Patch(':subdomain/plan')
   async updatePlan(
     @Param('subdomain') subdomain: string,
     @Body() planDto: UpdateTenantPlanDto,
-  ) {
+  ): Promise<{ message: string; data: unknown }> {
     const tenant = await this.provisioningService.updateTenantPlan(
       subdomain,
       planDto,
@@ -121,8 +140,11 @@ export class TenantProvisioningController {
     return { message: 'Plan de suscripción actualizado', data: tenant };
   }
 
+  @SaasPermission('SAAS_TENANTS_DELETE')
   @Delete(':subdomain')
-  async remove(@Param('subdomain') subdomain: string) {
+  async remove(
+    @Param('subdomain') subdomain: string,
+  ): Promise<{ message: string }> {
     await this.provisioningService.deleteTenant(subdomain);
     return { message: 'Inquilino y su BD fueron eliminados permanentemente' };
   }

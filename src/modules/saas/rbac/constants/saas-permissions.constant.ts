@@ -13,3 +13,5 @@ export const SaasPermissionNames = [
   'SAAS_ROLES_CREATE',
   'SAAS_ROLES_DELETE',
 ] as const;
+
+export type SaasPermissionName = (typeof SaasPermissionNames)[number];

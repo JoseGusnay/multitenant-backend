@@ -8,7 +8,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SubscriptionPlansService } from './subscription-plans.service';
-import { GlobalAdminGuard } from '../auth/global-admin.guard';
+import { SaasPermissionGuard } from '../auth/saas-permission.guard';
+import { SaasPermission } from '../auth/saas-permission.decorator';
 import { SubscriptionPlanCatalogEntity } from '../../../core/modules/tenant-identification/infrastructure/subscription-plan-catalog.entity';
 
 @Controller('backoffice/plans')
@@ -27,7 +28,8 @@ export class SubscriptionPlansController {
     return this.plansService.findOne(id);
   }
 
-  @UseGuards(GlobalAdminGuard)
+  @SaasPermission('SAAS_TENANTS_UPDATE')
+  @UseGuards(SaasPermissionGuard)
   @Patch(':id')
   async update(
     @Param('id') id: string,
@@ -36,7 +38,8 @@ export class SubscriptionPlansController {
     return this.plansService.update(id, body);
   }
 
-  @UseGuards(GlobalAdminGuard)
+  @SaasPermission('SAAS_TENANTS_CREATE')
+  @UseGuards(SaasPermissionGuard)
   @Post()
   async create(
     @Body() body: Partial<SubscriptionPlanCatalogEntity>,
