@@ -158,7 +158,7 @@ export class AuthService {
       throw new BadRequestException('Código de seguridad inválido.');
     }
 
-    if (new Date() > user?.resetPasswordExpires) {
+    if (!user.resetPasswordExpires || new Date() > user.resetPasswordExpires) {
       throw new BadRequestException(
         'El código ha expirado (más de 15 minutos). Solicite uno nuevo.',
       );

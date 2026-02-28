@@ -38,7 +38,7 @@ export class SaasUser {
   @Column({ nullable: true })
   phone: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   resetPasswordOtp: string | null;
 
   @Column({ type: 'timestamp', nullable: true })
