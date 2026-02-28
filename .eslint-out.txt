@@ -1,0 +1,16 @@
+
+C:\Users\usuario\Documents\proyects personal\netsjs\multitenant-backend\src\modules\saas\plans\subscription-plans.controller.ts
+   1:9   error  Replace `┬ÀController,┬ÀGet,┬ÀPatch,┬ÀParam,┬ÀBody,┬ÀPost,┬ÀUseGuards┬À` with `ÔÉìÔÅÄ┬À┬ÀController,ÔÉìÔÅÄ┬À┬ÀGet,ÔÉìÔÅÄ┬À┬ÀPatch,ÔÉìÔÅÄ┬À┬ÀParam,ÔÉìÔÅÄ┬À┬ÀBody,ÔÉìÔÅÄ┬À┬ÀPost,ÔÉìÔÅÄ┬À┬ÀUseGuards,ÔÉìÔÅÄ`  prettier/prettier
+   7:73  error  Delete `┬À`                                                                                                                                             prettier/prettier
+  10:3   error  Missing return type on function                                                                                                                        @typescript-eslint/explicit-function-return-type
+  15:3   error  Missing return type on function                                                                                                                        @typescript-eslint/explicit-function-return-type
+  21:3   error  Missing return type on function                                                                                                                        @typescript-eslint/explicit-function-return-type
+  21:55  error  Unexpected any. Specify a different type                                                                                                               @typescript-eslint/no-explicit-any
+  22:41  error  Unsafe argument of type `any` assigned to a parameter of type `Partial<SubscriptionPlanCatalogEntity>`                                                 @typescript-eslint/no-unsafe-argument
+  27:3   error  Missing return type on function                                                                                                                        @typescript-eslint/explicit-function-return-type
+  27:30  error  Unexpected any. Specify a different type                                                                                                               @typescript-eslint/no-explicit-any
+  28:37  error  Unsafe argument of type `any` assigned to a parameter of type `Partial<SubscriptionPlanCatalogEntity>`                                                 @typescript-eslint/no-unsafe-argument
+
+Ô£û 10 problems (10 errors, 0 warnings)
+  2 errors and 0 warnings potentially fixable with the `--fix` option.
+
