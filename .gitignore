@@ -54,3 +54,10 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# WhatsApp Web JS Auth
+.wwebjs_auth/
+.wwebjs_cache/
+
+# Local Deployment Logs
+caddy_logs*.txt
