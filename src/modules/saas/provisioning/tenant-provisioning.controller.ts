@@ -60,6 +60,7 @@ export class TenantProvisioningController {
     };
   }
 
+  @SaasPermission('SAAS_TENANTS_CREATE')
   @Post('send-credentials')
   async sendCredentials(
     @Body() body: SendCredentialsDto,
@@ -81,6 +82,7 @@ export class TenantProvisioningController {
     return { message: 'Credenciales enviadas por WhatsApp exitosamente.' };
   }
 
+  @SaasPermission('SAAS_TENANTS_VIEW')
   @Sse('provision/:id/status')
   provisionStatus(@Param('id') id: string): Observable<MessageEvent> {
     return fromEvent(this.eventEmitter, `tenant.provisioning.${id}`).pipe(

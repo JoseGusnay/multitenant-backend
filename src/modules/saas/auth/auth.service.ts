@@ -104,12 +104,34 @@ export class AuthService {
   /**
    * Refresca el token de un Administrador Global activo.
    */
-  async refresh(user: TokenPayloadUser): Promise<{ access_token: string }> {
+  async refresh(
+    currentUser: TokenPayloadUser,
+  ): Promise<{ access_token: string }> {
+    // Recargamos el usuario desde DB para obtener sus permisos ACTUALIZADOS.
+    // Si un admin le cambió roles/permisos, el próximo refresh los refleja.
+    const user = await this.saasUserRepo.findOne({
+      where: { id: currentUser.sub },
+      relations: ['roles', 'roles.permissions'],
+    });
+
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Sesión inválida o usuario inactivo.');
+    }
+
+    const permissions = Array.from(
+      new Set(
+        user.roles.flatMap((r) => r.permissions?.map((p) => p.name) || []),
+      ),
+    );
+    const isGlobalAdmin = user.roles.some((r) => r.name === 'GLOBAL_ADMIN');
+
     const payload = {
-      sub: user.sub,
-      email: user.username,
-      isGlobalAdmin: user.isGlobalAdmin,
+      sub: user.id,
+      email: user.email,
+      isGlobalAdmin,
+      permissions,
     };
+
     return { access_token: await this.jwtService.signAsync(payload) };
   }
 
