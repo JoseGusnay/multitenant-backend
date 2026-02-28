@@ -38,6 +38,20 @@ FROM node:20-alpine AS production
 
 WORKDIR /usr/src/app
 
+# Instalar Chromium y dependencias para Puppeteer (WhatsApp Web JS)
+# Instalar también tzdata si necesitas configurar zona horaria
+RUN apk update && apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
+
+# Le decimos a Puppeteer que use el Chromium instalado por Alpine
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 COPY package*.json yarn.lock ./
 
 # Instalamos SOLAMENTE las dependencias de producción

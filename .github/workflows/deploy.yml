@@ -29,7 +29,7 @@ jobs:
             git pull origin main
             
             # Reconstruimos la imagen de la API sin caché y levantamos los contenedores
-            docker-compose up -d --build api
+            docker compose up -d --build api
             
             # Limpiamos imágenes viejas que ya no se usan para no llenar el disco del VPS
             docker image prune -f
