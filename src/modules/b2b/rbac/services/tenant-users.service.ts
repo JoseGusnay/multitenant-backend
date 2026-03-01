@@ -8,18 +8,19 @@ import { TenantConnectionManager } from '../../../../core/modules/tenant-connect
 import { Tenant } from '../../../tenants/domain/tenant.entity';
 import { TenantUser } from '../entities/tenant-user.entity';
 import { Role } from '../entities/role.entity';
-import { In } from 'typeorm';
+import { In, Brackets } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { PageOptionsDto } from '../../../../core/pagination/dto/page-options.dto';
-import { FilterCondition } from '../../../../core/filters/interfaces/filter-condition.interface';
-import { PageDto } from '../../../../core/pagination/dto/page.dto';
-import { PageMetaDto } from '../../../../core/pagination/dto/page-meta.dto';
-import { TypeOrmFilterBuilder } from '../../../../core/filters/builder/typeorm-filter.builder';
+import { AdvancedQueryDto } from '../../common/dtos/advanced-query.dto';
+import { QueryBuilderUtils } from '../../common/utils/query-builder.util';
+
 @Injectable()
 export class TenantUsersService {
   constructor(private readonly connectionManager: TenantConnectionManager) {}
 
-  async createUser(tenant: Tenant, dto: CreateTenantUserDto) {
+  async createUser(
+    tenant: Tenant,
+    dto: CreateTenantUserDto,
+  ): Promise<TenantUser> {
     const connection = await this.connectionManager.getTenantConnection(tenant);
     const userRepo = connection.getRepository(TenantUser);
     const roleRepo = connection.getRepository(Role);
@@ -53,27 +54,34 @@ export class TenantUsersService {
 
   async getAllUsers(
     tenant: Tenant,
-    pageOptionsDto: PageOptionsDto,
-    filters: FilterCondition[],
-  ): Promise<PageDto<TenantUser>> {
+    queryDto: AdvancedQueryDto,
+  ): Promise<{ data: TenantUser[]; total: number }> {
     const connection = await this.connectionManager.getTenantConnection(tenant);
     const userRepo = connection.getRepository(TenantUser);
+    const { page, limit, sortField, sortOrder, search, filterModel } = queryDto;
 
-    const queryBuilder = userRepo.createQueryBuilder('user');
-    queryBuilder.leftJoinAndSelect('user.roles', 'roles');
+    const qb = userRepo.createQueryBuilder('user');
+    qb.leftJoinAndSelect('user.roles', 'roles');
 
-    const filterBuilder = new TypeOrmFilterBuilder(queryBuilder, 'user');
-    filterBuilder.applyFilters(filters);
+    // 1. Filtros Ag-Grid
+    QueryBuilderUtils.applyAgGridFilters(qb, 'user', filterModel);
 
-    queryBuilder
-      .orderBy('user.createdAt', pageOptionsDto.order)
-      .skip(pageOptionsDto.skip)
-      .take(pageOptionsDto.take);
+    // 2. Búsqueda Global
+    if (search) {
+      qb.andWhere(
+        new Brackets((innerQb) => {
+          innerQb.where('user.email ILIKE :search', { search: `%${search}%` });
+        }),
+      );
+    }
 
-    const itemCount = await queryBuilder.getCount();
-    const { entities } = await queryBuilder.getRawAndEntities();
+    // 3. Ordenamiento
+    QueryBuilderUtils.applySorting(qb, 'user', sortField, sortOrder);
 
-    const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
-    return new PageDto(entities, pageMetaDto);
+    // 4. Paginación
+    QueryBuilderUtils.applyPagination(qb, page, limit);
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, total };
   }
 }

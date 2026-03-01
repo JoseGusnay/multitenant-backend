@@ -1,10 +1,8 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { DataSource, Brackets } from 'typeorm';
 import { Branch } from './branch.entity';
-import type {
-  AdvancedQueryDto,
-  AgGridFilterCondition,
-} from '../common/dtos/advanced-query.dto';
+import type { AdvancedQueryDto } from '../common/dtos/advanced-query.dto';
+import { QueryBuilderUtils } from '../common/utils/query-builder.util';
 
 @Injectable()
 export class BranchesService {
@@ -20,41 +18,10 @@ export class BranchesService {
     const repo = this.tenantDataSource.getRepository(Branch);
     const qb = repo.createQueryBuilder('branch');
 
-    // 1. Filtros por columna (Ag-Grid style)
-    if (filterModel) {
-      Object.entries(filterModel).forEach(([field, condition], index) => {
-        const dbField = `branch.${field}`;
+    // 1. Filtros Ag-Grid
+    QueryBuilderUtils.applyAgGridFilters(qb, 'branch', filterModel);
 
-        if (condition.operator && condition.conditions) {
-          // Soporte para filtros combinados (AND/OR) para una misma columna
-          qb.andWhere(
-            new Brackets((innerQb) => {
-              condition.conditions?.forEach((subCond, subIndex) => {
-                const paramName = `filter_${field}_${index}_${subIndex}`;
-                const sql = this.getSqlCondition(dbField, subCond, paramName);
-                if (sql) {
-                  const params = { [paramName]: this.getParamValue(subCond) };
-                  if (condition.operator === 'OR') {
-                    innerQb.orWhere(sql, params);
-                  } else {
-                    innerQb.andWhere(sql, params);
-                  }
-                }
-              });
-            }),
-          );
-        } else {
-          // Filtro simple
-          const paramName = `filter_${field}_${index}`;
-          const sql = this.getSqlCondition(dbField, condition, paramName);
-          if (sql) {
-            qb.andWhere(sql, { [paramName]: this.getParamValue(condition) });
-          }
-        }
-      });
-    }
-
-    // 2. Búsqueda Global (OR en múltiples campos)
+    // 2. Búsqueda Global
     if (search) {
       qb.andWhere(
         new Brackets((innerQb) => {
@@ -68,56 +35,13 @@ export class BranchesService {
     }
 
     // 3. Ordenamiento
-    if (sortField) {
-      qb.orderBy(`branch.${sortField}`, sortOrder || 'ASC');
-    } else {
-      qb.orderBy('branch.createdAt', 'DESC');
-    }
+    QueryBuilderUtils.applySorting(qb, 'branch', sortField, sortOrder);
 
     // 4. Paginación
-    const skip = (page - 1) * limit;
-    qb.skip(skip).take(limit);
+    QueryBuilderUtils.applyPagination(qb, page, limit);
 
     const [data, total] = await qb.getManyAndCount();
     return { data, total };
-  }
-
-  private getSqlCondition(
-    dbField: string,
-    condition: AgGridFilterCondition,
-    paramName: string,
-  ): string | null {
-    if (condition.filterType === 'text') {
-      switch (condition.type) {
-        case 'contains':
-        case 'startsWith':
-        case 'endsWith':
-          return `${dbField} ILIKE :${paramName}`;
-        case 'equals':
-          return `${dbField} = :${paramName}`;
-        case 'notEqual':
-          return `${dbField} != :${paramName}`;
-        default:
-          return null;
-      }
-    }
-    return null;
-  }
-
-  private getParamValue(condition: AgGridFilterCondition): unknown {
-    if (condition.filterType === 'text') {
-      switch (condition.type) {
-        case 'contains':
-          return `%${condition.filter as string}%`;
-        case 'startsWith':
-          return `${condition.filter as string}%`;
-        case 'endsWith':
-          return `%${condition.filter as string}`;
-        default:
-          return condition.filter;
-      }
-    }
-    return condition.filter;
   }
 
   async findOne(id: string): Promise<Branch> {
