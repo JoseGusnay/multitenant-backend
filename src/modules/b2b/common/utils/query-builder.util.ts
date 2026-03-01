@@ -12,13 +12,13 @@ export class QueryBuilderUtils {
   ): void {
     if (!filterModel) return;
 
-    Object.entries(filterModel).forEach(([field, condition], index) => {
+    Object.entries(filterModel).forEach(([field, condition], index): void => {
       const dbField = `${alias}.${field}`;
 
       if (condition.operator && condition.conditions) {
         qb.andWhere(
-          new Brackets((innerQb) => {
-            condition.conditions?.forEach((subCond, subIndex) => {
+          new Brackets((innerQb): void => {
+            condition.conditions?.forEach((subCond, subIndex): void => {
               const paramName = `filter_${field}_${index}_${subIndex}`;
               const sql = this.getSqlCondition(dbField, subCond, paramName);
               if (sql) {
@@ -84,7 +84,6 @@ export class QueryBuilderUtils {
           return null;
       }
     }
-    // TODO: Implement other types like number, date, etc.
     return null;
   }
 
