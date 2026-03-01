@@ -2,8 +2,8 @@ import { IsOptional, IsInt, Min, IsString, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export interface AgGridFilterCondition {
-  filterType: 'text' | 'number' | 'date' | 'set' | 'boolean';
-  type:
+  filterType?: 'text' | 'number' | 'date' | 'set' | 'boolean';
+  type?:
     | 'contains'
     | 'notContains'
     | 'equals'
@@ -18,6 +18,10 @@ export interface AgGridFilterCondition {
   filter?: unknown;
   filterTo?: unknown;
   values?: unknown[];
+
+  // Soporte para filtros combinados (AND/OR)
+  operator?: 'AND' | 'OR';
+  conditions?: AgGridFilterCondition[];
 }
 
 export interface AgGridFilterModel {

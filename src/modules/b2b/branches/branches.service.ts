@@ -1,7 +1,10 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { DataSource, Brackets } from 'typeorm';
 import { Branch } from './branch.entity';
-import type { AdvancedQueryDto } from '../common/dtos/advanced-query.dto';
+import type {
+  AdvancedQueryDto,
+  AgGridFilterCondition,
+} from '../common/dtos/advanced-query.dto';
 
 @Injectable()
 export class BranchesService {
@@ -20,37 +23,33 @@ export class BranchesService {
     // 1. Filtros por columna (Ag-Grid style)
     if (filterModel) {
       Object.entries(filterModel).forEach(([field, condition], index) => {
-        const paramName = `filter_${field}_${index}`;
         const dbField = `branch.${field}`;
 
-        if (condition.filterType === 'text') {
-          switch (condition.type) {
-            case 'contains':
-              qb.andWhere(`${dbField} ILIKE :${paramName}`, {
-                [paramName]: `%${condition.filter as string}%`,
+        if (condition.operator && condition.conditions) {
+          // Soporte para filtros combinados (AND/OR) para una misma columna
+          qb.andWhere(
+            new Brackets((innerQb) => {
+              condition.conditions?.forEach((subCond, subIndex) => {
+                const paramName = `filter_${field}_${index}_${subIndex}`;
+                const sql = this.getSqlCondition(dbField, subCond, paramName);
+                if (sql) {
+                  const params = { [paramName]: this.getParamValue(subCond) };
+                  if (condition.operator === 'OR') {
+                    innerQb.orWhere(sql, params);
+                  } else {
+                    innerQb.andWhere(sql, params);
+                  }
+                }
               });
-              break;
-            case 'startsWith':
-              qb.andWhere(`${dbField} ILIKE :${paramName}`, {
-                [paramName]: `${condition.filter as string}%`,
-              });
-              break;
-            case 'endsWith':
-              qb.andWhere(`${dbField} ILIKE :${paramName}`, {
-                [paramName]: `%${condition.filter as string}`,
-              });
-              break;
-            case 'equals':
-              qb.andWhere(`${dbField} = :${paramName}`, {
-                [paramName]: condition.filter,
-              });
-              break;
+            }),
+          );
+        } else {
+          // Filtro simple
+          const paramName = `filter_${field}_${index}`;
+          const sql = this.getSqlCondition(dbField, condition, paramName);
+          if (sql) {
+            qb.andWhere(sql, { [paramName]: this.getParamValue(condition) });
           }
-        } else if (
-          condition.filterType === 'boolean' ||
-          condition.filterType === 'set'
-        ) {
-          // Implementar otros tipos según necesidad
         }
       });
     }
@@ -81,6 +80,44 @@ export class BranchesService {
 
     const [data, total] = await qb.getManyAndCount();
     return { data, total };
+  }
+
+  private getSqlCondition(
+    dbField: string,
+    condition: AgGridFilterCondition,
+    paramName: string,
+  ): string | null {
+    if (condition.filterType === 'text') {
+      switch (condition.type) {
+        case 'contains':
+        case 'startsWith':
+        case 'endsWith':
+          return `${dbField} ILIKE :${paramName}`;
+        case 'equals':
+          return `${dbField} = :${paramName}`;
+        case 'notEqual':
+          return `${dbField} != :${paramName}`;
+        default:
+          return null;
+      }
+    }
+    return null;
+  }
+
+  private getParamValue(condition: AgGridFilterCondition): unknown {
+    if (condition.filterType === 'text') {
+      switch (condition.type) {
+        case 'contains':
+          return `%${condition.filter as string}%`;
+        case 'startsWith':
+          return `${condition.filter as string}%`;
+        case 'endsWith':
+          return `%${condition.filter as string}`;
+        default:
+          return condition.filter;
+      }
+    }
+    return condition.filter;
   }
 
   async findOne(id: string): Promise<Branch> {
