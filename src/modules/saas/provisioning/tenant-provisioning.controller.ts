@@ -24,7 +24,6 @@ import { Query } from '@nestjs/common';
 import { PageOptionsDto } from '../../../core/pagination/dto/page-options.dto';
 import { AdvancedFilterPipe } from '../../../core/filters/pipes/advanced-filter.pipe';
 import { FilterCondition } from '../../../core/filters/interfaces/filter-condition.interface';
-import { WhatsappService } from '../../notifications/whatsapp/whatsapp.service';
 
 const SUBDOMAIN_PATH = ':subdomain';
 
@@ -34,7 +33,6 @@ export class TenantProvisioningController {
   constructor(
     private readonly provisioningService: TenantProvisioningService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly whatsappService: WhatsappService,
   ) {}
 
   @SaasPermission('SAAS_TENANTS_CREATE')
