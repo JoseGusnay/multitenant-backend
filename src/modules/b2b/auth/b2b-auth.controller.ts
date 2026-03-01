@@ -11,6 +11,7 @@ import { B2bAuthService } from './b2b-auth.service';
 import type { TenantAwareRequest } from '../../../core/interfaces/tenant-aware-request.interface';
 import type { LoginDto } from '../../saas/auth/interfaces/login-credentials.interface';
 import type { TokenPayloadUser } from '../../saas/auth/interfaces/token-payload-user.interface';
+import type { TenantUser } from '../rbac/entities/tenant-user.entity';
 
 class SelectBranchDto {
   branchId!: string;
@@ -31,6 +32,7 @@ export class B2bAuthController {
   ): Promise<{
     access_token: string;
     branches: { id: string; name: string; isMain: boolean }[];
+    user: Omit<TenantUser, 'passwordHash'>;
   }> {
     const tenantReq = req as unknown as TenantAwareRequest;
     const tenantId = tenantReq.tenant?.id;

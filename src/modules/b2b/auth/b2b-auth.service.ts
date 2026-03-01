@@ -33,6 +33,7 @@ export class B2bAuthService {
   ): Promise<{
     access_token: string;
     branches: { id: string; name: string; isMain: boolean }[];
+    user: Omit<TenantUser, 'passwordHash'>;
   }> {
     const tenantUserRepo = this.tenantDataSource.getRepository(TenantUser);
 
@@ -81,9 +82,16 @@ export class B2bAuthService {
       isMain: b.isMain,
     }));
 
+    const userWithoutPassword = { ...user } as unknown as Record<
+      string,
+      unknown
+    >;
+    delete userWithoutPassword.passwordHash;
+
     return {
       access_token: await this.jwtService.signAsync(payload),
       branches,
+      user: userWithoutPassword as unknown as Omit<TenantUser, 'passwordHash'>,
     };
   }
 
