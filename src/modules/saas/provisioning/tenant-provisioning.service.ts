@@ -28,6 +28,9 @@ import { FilterCondition } from '../../../core/filters/interfaces/filter-conditi
 import { PageDto } from '../../../core/pagination/dto/page.dto';
 import { UpdateTenantPlanDto } from './dto/update-tenant-plan.dto';
 import { TenantStatsDto } from './dto/tenant-stats.dto';
+import { PasswordUtils } from '../../b2b/common/utils/password.util';
+import { WhatsappService } from '../../notifications/whatsapp/whatsapp.service';
+
 @Injectable()
 export class TenantProvisioningService {
   private readonly logger = new Logger(TenantProvisioningService.name);
@@ -43,23 +46,19 @@ export class TenantProvisioningService {
     @Inject('ITenantRepository')
     private readonly tenantRepository: ITenantRepository,
     private readonly plansService: SubscriptionPlansService,
+    private readonly whatsappService: WhatsappService,
   ) {
     this.masterDbUrl = this.configService.get<string>('DB_MIGRATION_TEMP_URL')!;
   }
 
   /**
    * Pipeline orquestador para aprovisionar un nuevo Tenant.
-   * 1. Genera ID y nombre físico de la DB (tenant_{uuid})
-   * 2. Ejecuta CREATE DATABASE en el cluster Master
-   * 3. Registra el nuevo Tenant en catálogo master (MockRepository ahora)
-   * 4. Dispara Migración Zero sobre esa nueva BD.
    */
   async provisionNewTenant(dto: ProvisioningDto): Promise<Tenant> {
     this.logger.log(
       `>> Iniciando pipeline de aprovisionamiento en BACKGROUND para subdominio: ${dto.subdomain}`,
     );
 
-    // 1. Verificar colisiones (En DB Real aquí buscaríamos por subdomain)
     const existing = await this.tenantRepository.getTenantConfig(dto.subdomain);
     if (existing) {
       throw new ConflictException(
@@ -67,21 +66,14 @@ export class TenantProvisioningService {
       );
     }
 
-    // 2. Preparar Entidad Dominio
     const tenantId = uuidv4();
-    // Usamos el subdominio para que la Base de Datos sea humanamente identificable (ej: tenant_mi_empresa)
-    // Reemplazamos guiones por guiones bajos para mantenerlo 100% compatible con SQL
     const physicalDbName = `tenant_${dto.subdomain.replace(/-/g, '_')}`;
-
-    // Fetch plan limits
     const plan = await this.plansService.findOne(dto.planId || 'BASIC');
 
-    // Inyectamos el host master pero con la bd especifica
     const tenantDbUrl =
       this.masterDbUrl.substring(0, this.masterDbUrl.lastIndexOf('/')) +
       `/${physicalDbName}`;
 
-    // Registra en Master Catalog inmediatamente en estado PROVISIONING
     const newTenant = new Tenant(
       tenantId,
       dto.name,
@@ -90,26 +82,25 @@ export class TenantProvisioningService {
       TenantStatus.PROVISIONING,
       new Date(),
       dto.timezone || 'America/Guayaquil',
-      'es-ES', // locale
+      'es-ES',
       plan.maxUsers,
       plan.maxInvoices,
       plan.maxBranches,
       plan.id,
-      undefined, // plan object
-      false, // requireMfa
-      [], // allowedIps
+      undefined,
+      false,
+      [],
       dto.countryCode,
       dto.phone,
       dto.adminEmail,
     );
-    newTenant.setPlan(plan as unknown as SubscriptionPlan); // Sync tipos DTO → dominio
+    newTenant.setPlan(plan as unknown as SubscriptionPlan);
 
     await this.tenantRepository.createTenant(newTenant);
     this.logger.log(
-      `Tenant ${newTenant.subdomain} encolado rápido en el Catálogo Master. Soltando hilo HTTP...`,
+      `Tenant ${newTenant.subdomain} encolado rápido en el Catálogo Master.`,
     );
 
-    // Disparamos la tarea pesada sin "await" para que el req HTTP termine y responda
     this.runAsyncProvisioning(newTenant, physicalDbName, dto).catch((e) => {
       this.logger.error('La promesa flotante falló crasamente', e);
     });
@@ -133,11 +124,9 @@ export class TenantProvisioningService {
     };
 
     try {
-      // Breve delay estético simulado para que el Frontend gane chance de subscribirse al SSE
       await new Promise((resolve) => setTimeout(resolve, 1500));
       emit('starting', 'Registrando datos centrales... listo');
 
-      // 3. Crear DB Física (Falla si Postgres master está caído)
       await this.databaseCreator.createDatabase(
         physicalDbName,
         this.masterDbUrl,
@@ -145,16 +134,17 @@ export class TenantProvisioningService {
       );
       emit('db_created', 'Forjando base de datos única (PostgreSQL)... listo');
 
-      // 4. Inyectar Esquema Zero-Touch
       await this.migrationService.runMigrationsForTenant(tenant);
       emit('migrating', 'Afinando modelos de negocio aislados... listo');
 
       // 5. Semillar Permisos, Rol ADMIN y Dueño Inicial
-      if (dto.adminEmail && dto.adminPassword) {
+      if (dto.adminEmail) {
         emit(
           'seeding',
           'Creando matriz de permisos y configurando súper administrador...',
         );
+        const adminPassword =
+          dto.adminPassword || PasswordUtils.generateRandomPassword();
         const connection =
           await this.connectionManager.getTenantConnection(tenant);
 
@@ -162,7 +152,6 @@ export class TenantProvisioningService {
         const roleRepo = connection.getRepository(Role);
         const userRepo = connection.getRepository(TenantUser);
 
-        // a) Sembrando Permisos de la App
         const savedPermissions: Permission[] = [];
         for (const permName of AllPermissionNames) {
           let permission = await permissionRepo.findOne({
@@ -175,19 +164,18 @@ export class TenantProvisioningService {
           savedPermissions.push(permission);
         }
 
-        // b) Creando Súper Role y enlazándolo a todos los Permisos
         let adminRole = await roleRepo.findOne({
           where: { name: 'SUPER_ADMIN' },
         });
         if (!adminRole) {
           adminRole = roleRepo.create({
             name: 'SUPER_ADMIN',
-            permissions: savedPermissions, // <- Magia de TypeORM: Inyecta en la Pivot role_permissions
+            permissions: savedPermissions,
           });
           await roleRepo.save(adminRole);
         }
 
-        const hashedPassword = await bcrypt.hash(dto.adminPassword, 10);
+        const hashedPassword = await bcrypt.hash(adminPassword, 10);
         const adminUser = userRepo.create({
           email: dto.adminEmail,
           passwordHash: hashedPassword,
@@ -196,7 +184,6 @@ export class TenantProvisioningService {
         });
         await userRepo.save(adminUser);
 
-        // d) Sembrando la Sucursal Principal
         const branchRepo = connection.getRepository(Branch);
         const mainBranch = branchRepo.create({
           name: `${tenant.name} - Principal`,
@@ -205,14 +192,22 @@ export class TenantProvisioningService {
         });
         await branchRepo.save(mainBranch);
 
-        // Asignamos el admin a la sucursal principal
         adminUser.branches = [mainBranch];
         await userRepo.save(adminUser);
 
         emit('seeding_done', 'Dueño sembrado con éxito en el Inquilino.');
+
+        if (tenant.phone) {
+          await this.whatsappService.sendTenantCredentials(tenant.phone, {
+            tenantName: tenant.name,
+            subdomain: tenant.subdomain,
+            adminEmail: dto.adminEmail,
+            adminPassword,
+            timezone: tenant.timezone,
+          });
+        }
       }
 
-      // 6. Finalizar
       tenant.changeStatus(TenantStatus.ACTIVE);
       await this.tenantRepository.updateTenant(tenant);
 
@@ -220,13 +215,10 @@ export class TenantProvisioningService {
       this.logger.log(`Worker finalizado exitosamente. Tenant Active!`);
     } catch (migError) {
       this.logger.error(
-        `La creación o migraciones fallaron. Iniciando Rollback de compensación...`,
+        `La creación o migraciones fallaron. Iniciando Rollback...`,
         migError,
       );
-      emit(
-        'failed',
-        'Error crítico detectado. Destruyendo entidad corrupta y realizando Rollback...',
-      );
+      emit('failed', 'Error crítico detectado. Realizando Rollback...');
 
       try {
         await this.databaseCreator.dropDatabase(
@@ -234,12 +226,8 @@ export class TenantProvisioningService {
           this.masterDbUrl,
         );
         await this.tenantRepository.deleteTenant(tenant.subdomain);
-        this.logger.log(`Rollback exitoso. Tenant limpiado.`);
       } catch (rollbackError) {
-        this.logger.error(
-          `FALLO CRÍTICO EN ROLLBACK. Posible DB fantasma.`,
-          rollbackError,
-        );
+        this.logger.error(`FALLO CRÍTICO EN ROLLBACK.`, rollbackError);
       }
     }
   }
@@ -267,7 +255,6 @@ export class TenantProvisioningService {
   ): Promise<Tenant> {
     const tenant = await this.getTenant(subdomain);
 
-    // Mutadores de dominio controlados y fuertemente tipados
     if (data.name) tenant.changeName(data.name);
     if (data.status) tenant.changeStatus(data.status);
     if (data.countryCode || data.phone) {
@@ -290,11 +277,7 @@ export class TenantProvisioningService {
   }
 
   async deleteTenant(subdomain: string): Promise<void> {
-    // Al invocar deleteTenant, el PostgresRepository ahora usa softDelete
     await this.tenantRepository.deleteTenant(subdomain);
-    this.logger.log(
-      `Tenant ${subdomain} marcado como inactivo/eliminado (Soft Delete). Su BD física e información persisten seguras.`,
-    );
   }
 
   async getStats(): Promise<TenantStatsDto> {
@@ -310,26 +293,22 @@ export class TenantProvisioningService {
     stats.suspended = 0;
     stats.deleted = 0;
 
-    raw.statusCounts.forEach((sc: { status: string; count: string }) => {
+    raw.statusCounts.forEach((sc): void => {
       const count = parseInt(sc.count, 10);
       stats.total += count;
       const status = sc.status as TenantStatus;
-      if (status === TenantStatus.ACTIVE) {
-        stats.active = count;
-      } else if (status === TenantStatus.PROVISIONING) {
-        stats.provisioning = count;
-      } else if (
+      if (status === TenantStatus.ACTIVE) stats.active = count;
+      else if (status === TenantStatus.PROVISIONING) stats.provisioning = count;
+      else if (
         status === TenantStatus.SUSPENDED_PAYMENT ||
         status === TenantStatus.SUSPENDED_VIOLATION
       ) {
         stats.suspended += count;
-      } else if (status === TenantStatus.DELETED) {
-        stats.deleted = count;
-      }
+      } else if (status === TenantStatus.DELETED) stats.deleted = count;
     });
 
     stats.growthLast30Days = raw.growth.map(
-      (g: { date: string; count: string }) => ({
+      (g): { date: string; count: number } => ({
         date: g.date,
         count: parseInt(g.count, 10),
       }),
@@ -344,13 +323,50 @@ export class TenantProvisioningService {
   ): Promise<Tenant> {
     const tenant = await this.getTenant(subdomain);
     const plan = await this.plansService.findOne(dto.planId);
-
     tenant.setPlan(plan as unknown as SubscriptionPlan);
-
     await this.tenantRepository.updateTenant(tenant);
-    this.logger.log(
-      `Plan del tenant ${subdomain} actualizado a ${plan.name}. Límites sincronizados desde el catálogo central.`,
-    );
     return tenant;
+  }
+
+  /**
+   * Regenera la contraseña del administrador oficial y envía las credenciales por WhatsApp.
+   */
+  async sendCredentials(subdomain: string): Promise<{ success: boolean }> {
+    const tenant = await this.getTenant(subdomain);
+
+    if (!tenant.adminEmail || !tenant.phone) {
+      throw new ConflictException(
+        'El tenant no tiene correo o teléfono registrado.',
+      );
+    }
+
+    const newPassword = PasswordUtils.generateRandomPassword();
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    const connection = await this.connectionManager.getTenantConnection(tenant);
+    const userRepo = connection.getRepository(TenantUser);
+
+    const user = await userRepo.findOne({
+      where: { email: tenant.adminEmail },
+    });
+
+    if (!user) {
+      throw new NotFoundException(
+        `No se encontró el usuario ${tenant.adminEmail} dentro del inquilino.`,
+      );
+    }
+
+    user.passwordHash = hashedPassword;
+    await userRepo.save(user);
+
+    await this.whatsappService.sendTenantCredentials(tenant.phone, {
+      tenantName: tenant.name,
+      subdomain: tenant.subdomain,
+      adminEmail: tenant.adminEmail,
+      adminPassword: newPassword,
+      timezone: tenant.timezone,
+    });
+
+    return { success: true };
   }
 }

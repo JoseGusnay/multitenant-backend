@@ -17,7 +17,6 @@ import { map } from 'rxjs/operators';
 import { TenantProvisioningService } from './tenant-provisioning.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
-import { SendCredentialsDto } from './dto/send-credentials.dto';
 import { UpdateTenantPlanDto } from './dto/update-tenant-plan.dto';
 import { SaasPermissionGuard } from '../auth/saas-permission.guard';
 import { SaasPermission } from '../auth/saas-permission.decorator';
@@ -26,6 +25,8 @@ import { PageOptionsDto } from '../../../core/pagination/dto/page-options.dto';
 import { AdvancedFilterPipe } from '../../../core/filters/pipes/advanced-filter.pipe';
 import { FilterCondition } from '../../../core/filters/interfaces/filter-condition.interface';
 import { WhatsappService } from '../../notifications/whatsapp/whatsapp.service';
+
+const SUBDOMAIN_PATH = ':subdomain';
 
 @UseGuards(SaasPermissionGuard)
 @Controller('backoffice/tenants')
@@ -60,35 +61,34 @@ export class TenantProvisioningController {
     };
   }
 
-  @SaasPermission('SAAS_TENANTS_CREATE')
-  @Post('send-credentials')
+  @SaasPermission('SAAS_TENANTS_UPDATE')
+  @Post(':subdomain/send-credentials')
   async sendCredentials(
-    @Body() body: SendCredentialsDto,
-  ): Promise<{ message: string }> {
-    const sent = await this.whatsappService.sendTenantCredentials(body.phone, {
-      tenantName: body.tenantName,
-      subdomain: body.subdomain,
-      adminEmail: body.adminEmail,
-      adminPassword: body.adminPassword,
-      timezone: body.timezone,
-    });
+    @Param('subdomain') subdomain: string,
+  ): Promise<{ message: string; success: boolean }> {
+    const result = await this.provisioningService.sendCredentials(subdomain);
 
-    if (!sent) {
+    if (!result.success) {
       throw new BadRequestException(
         'No se pudo enviar el mensaje por WhatsApp. Verifica que el servicio esté activo.',
       );
     }
 
-    return { message: 'Credenciales enviadas por WhatsApp exitosamente.' };
+    return {
+      message: 'Credenciales regeneradas y enviadas por WhatsApp exitosamente.',
+      success: true,
+    };
   }
 
   @SaasPermission('SAAS_TENANTS_VIEW')
   @Sse('provision/:id/status')
   provisionStatus(@Param('id') id: string): Observable<MessageEvent> {
     return fromEvent(this.eventEmitter, `tenant.provisioning.${id}`).pipe(
-      map((payload: object) => ({
-        data: payload,
-      })),
+      map(
+        (payload: object): MessageEvent => ({
+          data: payload,
+        }),
+      ),
     );
   }
 
@@ -108,7 +108,7 @@ export class TenantProvisioningController {
   }
 
   @SaasPermission('SAAS_TENANTS_VIEW')
-  @Get(':subdomain')
+  @Get(SUBDOMAIN_PATH)
   async findOne(
     @Param('subdomain') subdomain: string,
   ): Promise<{ data: unknown }> {
@@ -117,7 +117,7 @@ export class TenantProvisioningController {
   }
 
   @SaasPermission('SAAS_TENANTS_UPDATE')
-  @Patch(':subdomain')
+  @Patch(SUBDOMAIN_PATH)
   async update(
     @Param('subdomain') subdomain: string,
     @Body() updateDto: UpdateTenantDto,
@@ -130,7 +130,7 @@ export class TenantProvisioningController {
   }
 
   @SaasPermission('SAAS_TENANTS_UPDATE')
-  @Patch(':subdomain/plan')
+  @Patch(`${SUBDOMAIN_PATH}/plan`)
   async updatePlan(
     @Param('subdomain') subdomain: string,
     @Body() planDto: UpdateTenantPlanDto,
@@ -143,7 +143,7 @@ export class TenantProvisioningController {
   }
 
   @SaasPermission('SAAS_TENANTS_DELETE')
-  @Delete(':subdomain')
+  @Delete(SUBDOMAIN_PATH)
   async remove(
     @Param('subdomain') subdomain: string,
   ): Promise<{ message: string }> {
