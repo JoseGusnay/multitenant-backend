@@ -1,0 +1,44 @@
+
+> multitenant@0.0.1 lint-staged
+> lint-staged
+
+[STARTED] Backing up original state...
+[COMPLETED] Backed up original state in git stash (e5a8e9d)
+[STARTED] Running tasks for staged files...
+[STARTED] package.json ÔÇö 11 files
+[STARTED] *.ts ÔÇö 11 files
+[STARTED] eslint --fix
+[FAILED] eslint --fix [FAILED]
+[FAILED] eslint --fix [FAILED]
+[COMPLETED] Running tasks for staged files...
+[STARTED] Applying modifications from tasks...
+[SKIPPED] Skipped because of errors from tasks.
+[STARTED] Reverting to original state because of errors...
+[COMPLETED] Reverting to original state because of errors...
+[STARTED] Cleaning up temporary files...
+[COMPLETED] Cleaning up temporary files...
+
+Ô£û eslint --fix:
+
+C:\Users\usuario\Documents\proyects personal\netsjs\multitenant-backend\src\modules\b2b\auth\b2b-auth.controller.ts
+  30:17  error  Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  53:17  error  Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  62:29  error  Unsafe member access .user on an `any` value  @typescript-eslint/no-unsafe-member-access
+  76:29  error  Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  77:29  error  Unsafe member access .user on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+C:\Users\usuario\Documents\proyects personal\netsjs\multitenant-backend\src\modules\b2b\auth\b2b-auth.service.ts
+  43:9  warning  Define a constant instead of duplicating this literal 3 times  sonarjs/no-duplicate-string
+
+C:\Users\usuario\Documents\proyects personal\netsjs\multitenant-backend\src\modules\saas\provisioning\tenant-provisioning.service.ts
+  123:3   error  Missing return type on function                                   @typescript-eslint/explicit-function-return-type
+  128:52  error  Missing return type on function                                   @typescript-eslint/explicit-function-return-type
+  316:11  error  The two values in this comparison do not have a shared enum type  @typescript-eslint/no-unsafe-enum-comparison
+  318:18  error  The two values in this comparison do not have a shared enum type  @typescript-eslint/no-unsafe-enum-comparison
+  321:9   error  The two values in this comparison do not have a shared enum type  @typescript-eslint/no-unsafe-enum-comparison
+  322:9   error  The two values in this comparison do not have a shared enum type  @typescript-eslint/no-unsafe-enum-comparison
+  325:18  error  The two values in this comparison do not have a shared enum type  @typescript-eslint/no-unsafe-enum-comparison
+
+Ô£û 13 problems (12 errors, 1 warning)
+
+husky - pre-commit script failed (code 1)

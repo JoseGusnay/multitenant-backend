@@ -21,6 +21,7 @@ import { Role } from '../../b2b/rbac/entities/role.entity';
 import { TenantUser } from '../../b2b/rbac/entities/tenant-user.entity';
 import { Permission } from '../../b2b/rbac/entities/permission.entity';
 import { AllPermissionNames } from '../../b2b/rbac/constants/app-permissions.constant';
+import { Branch } from '../../b2b/branches/branch.entity';
 import { ProvisioningDto } from './interfaces/provisioning-data.interface';
 import { PageOptionsDto } from '../../../core/pagination/dto/page-options.dto';
 import { FilterCondition } from '../../../core/filters/interfaces/filter-condition.interface';
@@ -101,7 +102,7 @@ export class TenantProvisioningService {
       dto.phone,
       dto.adminEmail,
     );
-    newTenant.setPlan(plan as any); // Sync with plan domain object
+    newTenant.setPlan(plan as unknown as SubscriptionPlan); // Sync tipos DTO → dominio
 
     await this.tenantRepository.createTenant(newTenant);
     this.logger.log(
@@ -123,8 +124,8 @@ export class TenantProvisioningService {
     tenant: Tenant,
     physicalDbName: string,
     dto: ProvisioningDto,
-  ) {
-    const emit = (status: string, message: string) => {
+  ): Promise<void> {
+    const emit = (status: string, message: string): void => {
       this.eventEmitter.emit(`tenant.provisioning.${tenant.id}`, {
         status,
         message,
@@ -194,6 +195,20 @@ export class TenantProvisioningService {
           isActive: true,
         });
         await userRepo.save(adminUser);
+
+        // d) Sembrando la Sucursal Principal
+        const branchRepo = connection.getRepository(Branch);
+        const mainBranch = branchRepo.create({
+          name: `${tenant.name} - Principal`,
+          isActive: true,
+          isMain: true,
+        });
+        await branchRepo.save(mainBranch);
+
+        // Asignamos el admin a la sucursal principal
+        adminUser.branches = [mainBranch];
+        await userRepo.save(adminUser);
+
         emit('seeding_done', 'Dueño sembrado con éxito en el Inquilino.');
       }
 
@@ -283,7 +298,10 @@ export class TenantProvisioningService {
   }
 
   async getStats(): Promise<TenantStatsDto> {
-    const raw = await this.tenantRepository.getStatsCounts();
+    const raw = (await this.tenantRepository.getStatsCounts()) as {
+      statusCounts: { status: string; count: string }[];
+      growth: { date: string; count: string }[];
+    };
 
     const stats = new TenantStatsDto();
     stats.total = 0;
@@ -292,30 +310,30 @@ export class TenantProvisioningService {
     stats.suspended = 0;
     stats.deleted = 0;
 
-    raw.statusCounts.forEach((sc: any) => {
+    raw.statusCounts.forEach((sc: { status: string; count: string }) => {
       const count = parseInt(sc.count, 10);
       stats.total += count;
-      switch (sc.status) {
-        case TenantStatus.ACTIVE:
-          stats.active = count;
-          break;
-        case TenantStatus.PROVISIONING:
-          stats.provisioning = count;
-          break;
-        case TenantStatus.SUSPENDED_PAYMENT:
-        case TenantStatus.SUSPENDED_VIOLATION:
-          stats.suspended += count;
-          break;
-        case TenantStatus.DELETED:
-          stats.deleted = count;
-          break;
+      const status = sc.status as TenantStatus;
+      if (status === TenantStatus.ACTIVE) {
+        stats.active = count;
+      } else if (status === TenantStatus.PROVISIONING) {
+        stats.provisioning = count;
+      } else if (
+        status === TenantStatus.SUSPENDED_PAYMENT ||
+        status === TenantStatus.SUSPENDED_VIOLATION
+      ) {
+        stats.suspended += count;
+      } else if (status === TenantStatus.DELETED) {
+        stats.deleted = count;
       }
     });
 
-    stats.growthLast30Days = raw.growth.map((g: any) => ({
-      date: g.date,
-      count: parseInt(g.count, 10),
-    }));
+    stats.growthLast30Days = raw.growth.map(
+      (g: { date: string; count: string }) => ({
+        date: g.date,
+        count: parseInt(g.count, 10),
+      }),
+    );
 
     return stats;
   }
@@ -327,7 +345,7 @@ export class TenantProvisioningService {
     const tenant = await this.getTenant(subdomain);
     const plan = await this.plansService.findOne(dto.planId);
 
-    tenant.setPlan(plan as any);
+    tenant.setPlan(plan as unknown as SubscriptionPlan);
 
     await this.tenantRepository.updateTenant(tenant);
     this.logger.log(
