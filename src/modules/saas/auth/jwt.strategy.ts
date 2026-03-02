@@ -19,7 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload): Promise<TokenPayloadUser> {
     if (!payload.tenantId && !payload.isGlobalAdmin) {
       throw new UnauthorizedException(
-        'El token no posee un ámbito de aislamiento válido ni es administrador global',
+        `El token no posee un ámbito de aislamiento válido ni es administrador global. Payload recibido: ${JSON.stringify(payload)}`,
       );
     }
 
