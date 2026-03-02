@@ -18,7 +18,7 @@ export class SaasRbacService implements OnApplicationBootstrap {
     @InjectRepository(SaasPermission)
     private readonly permRepo: Repository<SaasPermission>,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   async onApplicationBootstrap(): Promise<void> {
     this.logger.log('Iniciando verificación de RBAC Master (SaaS Dueño)...');
@@ -101,6 +101,7 @@ export class SaasRbacService implements OnApplicationBootstrap {
       // Asegurar que el admin seed siempre tenga isProtected
       if (!existingAdmin.isProtected) {
         existingAdmin.isProtected = true;
+        existingAdmin.roles = [superRole];
         await this.userRepo.save(existingAdmin);
         this.logger.log('Global Admin marcado como protegido.');
       }
