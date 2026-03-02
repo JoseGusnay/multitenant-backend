@@ -58,6 +58,9 @@ export class TenantIdentificationModule implements NestModule {
         { path: 'api/auth/reset-password', method: RequestMethod.ALL },
         { path: 'api/backoffice/(.*)', method: RequestMethod.ALL },
         { path: 'api/saas/(.*)', method: RequestMethod.ALL },
+        { path: 'auth/login/global', method: RequestMethod.ALL },
+        { path: 'auth/recover-password', method: RequestMethod.ALL },
+        { path: 'auth/reset-password', method: RequestMethod.ALL },
         { path: 'backoffice/(.*)', method: RequestMethod.ALL },
         { path: 'saas/(.*)', method: RequestMethod.ALL },
       )
