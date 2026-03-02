@@ -91,6 +91,12 @@ export class RolesService {
   async update(id: string, updateRoleDto: UpdateRoleDto) {
     const role = await this.findOne(id);
 
+    if (role.name === 'GLOBAL_ADMIN') {
+      throw new BadRequestException(
+        'El rol GLOBAL_ADMIN está protegido y no puede ser editado.',
+      );
+    }
+
     if (updateRoleDto.name && updateRoleDto.name !== role.name) {
       const existing = await this.roleRepo.findOne({
         where: { name: updateRoleDto.name },

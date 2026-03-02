@@ -130,6 +130,11 @@ export class TenantUsersService {
     }
 
     if (dto.roleIds) {
+      if (user.isProtected) {
+        throw new BadRequestException(
+          'No se pueden modificar los roles de un usuario protegido del sistema.',
+        );
+      }
       const roleIds = dto.roleIds;
       const roleRepo = connection.getRepository(Role);
       const roles = await roleRepo.findBy({ id: In(roleIds) });
@@ -164,6 +169,12 @@ export class TenantUsersService {
     const connection = await this.connectionManager.getTenantConnection(tenant);
     const userRepo = connection.getRepository(TenantUser);
     const user = await this.getUserById(tenant, id);
+
+    if (user.isProtected) {
+      throw new BadRequestException(
+        'Este usuario está protegido por el sistema y no puede ser eliminado.',
+      );
+    }
 
     // Proteger al último SUPER_ADMIN
     const isSuperAdmin = user.roles?.some(

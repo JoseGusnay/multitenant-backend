@@ -181,6 +181,7 @@ export class TenantProvisioningService {
           passwordHash: hashedPassword,
           roles: [adminRole],
           isActive: true,
+          isProtected: true,
         });
         await userRepo.save(adminUser);
 

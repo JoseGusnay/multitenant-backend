@@ -1,0 +1,18 @@
+
+> multitenant@0.0.1 typeorm
+> typeorm-ts-node-commonjs migration:generate src/database/migrations/tenant/AddIsProtectedToTenantUsers -d src/database/tenant-orm.config.ts
+
+[90m[4mquery:[24m[39m [94mSELECT[0m [95mversion[0m[37m([0m[37m)[0m
+[90m[4mquery:[24m[39m [94mSELECT[0m [37m*[0m [94mFROM[0m [95mcurrent_schema[0m[37m([0m[37m)[0m
+[30m[41mError during migration generation:[49m[39m
+TypeORMError: Entity metadata for TenantUser#branches was not found. Check if you specified a correct entity object and if it's connected in the connection options.
+    at C:\Users\usuario\Documents\proyects personal\netsjs\multitenant-backend\node_modules\src\metadata-builder\EntityMetadataBuilder.ts:1128:23
+    at Array.forEach (<anonymous>)
+    at EntityMetadataBuilder.computeInverseProperties (C:\Users\usuario\Documents\proyects personal\netsjs\multitenant-backend\node_modules\src\metadata-builder\EntityMetadataBuilder.ts:1118:34)
+    at C:\Users\usuario\Documents\proyects personal\netsjs\multitenant-backend\node_modules\src\metadata-builder\EntityMetadataBuilder.ts:160:18
+    at Array.forEach (<anonymous>)
+    at EntityMetadataBuilder.build (C:\Users\usuario\Documents\proyects personal\netsjs\multitenant-backend\node_modules\src\metadata-builder\EntityMetadataBuilder.ts:159:25)
+    at ConnectionMetadataBuilder.buildEntityMetadatas (C:\Users\usuario\Documents\proyects personal\netsjs\multitenant-backend\node_modules\src\connection\ConnectionMetadataBuilder.ts:106:11)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async DataSource.buildMetadatas (C:\Users\usuario\Documents\proyects personal\netsjs\multitenant-backend\node_modules\src\data-source\DataSource.ts:733:13)
+    at async DataSource.initialize (C:\Users\usuario\Documents\proyects personal\netsjs\multitenant-backend\node_modules\src\data-source\DataSource.ts:264:13)

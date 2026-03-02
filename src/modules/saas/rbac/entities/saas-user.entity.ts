@@ -32,6 +32,9 @@ export class SaasUser {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ default: false })
+  isProtected: boolean;
+
   @Column({ nullable: true })
   countryCode: string;
 

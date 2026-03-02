@@ -1,4 +1,9 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 
 import { HeaderTenantResolver } from './strategies/header-tenant.resolver';
 import { SubdomainTenantResolver } from './strategies/subdomain-tenant.resolver';
@@ -47,7 +52,14 @@ export class TenantIdentificationModule implements NestModule {
     // 2. Aplicar el Middleware Guardián a las rutas, pero excluir los endpoints del Master Global.
     consumer
       .apply(TenantIdentificationMiddleware)
-      .exclude('backoffice/(.*)', 'auth/(.*)', 'saas/(.*)')
+      .exclude(
+        { path: 'api/auth/(.*)', method: RequestMethod.ALL },
+        { path: 'api/backoffice/(.*)', method: RequestMethod.ALL },
+        { path: 'api/saas/(.*)', method: RequestMethod.ALL },
+        { path: 'auth/(.*)', method: RequestMethod.ALL },
+        { path: 'backoffice/(.*)', method: RequestMethod.ALL },
+        { path: 'saas/(.*)', method: RequestMethod.ALL },
+      )
       .forRoutes('*');
   }
 }

@@ -130,7 +130,11 @@ export class UsersService {
     }
 
     if (updateUserDto.roleIds) {
-      // Evitar que el GLOBAL ADMIN se quite todos los roles si es el unico (precaucion adicional)
+      if (user.isProtected) {
+        throw new BadRequestException(
+          'No se pueden modificar los roles de un usuario protegido del sistema.',
+        );
+      }
       const roles = await this.roleRepo.find({
         where: { id: In(updateUserDto.roleIds) },
       });
@@ -162,6 +166,12 @@ export class UsersService {
 
     if (!user) {
       throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+    }
+
+    if (user.isProtected) {
+      throw new BadRequestException(
+        'Este usuario está protegido por el sistema y no puede ser eliminado.',
+      );
     }
 
     const isGlobalAdmin = user.roles?.some(
