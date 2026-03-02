@@ -22,7 +22,7 @@ export class AuthService {
     @InjectRepository(SaasUser)
     private readonly saasUserRepo: Repository<SaasUser>,
     private readonly whatsappService: WhatsappService,
-  ) {}
+  ) { }
 
   /**
    * Simula la validación en el Master Catalog y emite un JWT firmado.
@@ -50,6 +50,7 @@ export class AuthService {
       id: string;
       email: string;
       roles: string[];
+      permissions: string[];
       countryCode: string;
       phone: string;
     };
@@ -95,6 +96,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         roles: user.roles.map((r) => r.name),
+        permissions, // ← Permisos también en el body para el frontend
         countryCode: user.countryCode,
         phone: user.phone,
       },

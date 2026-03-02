@@ -9,6 +9,7 @@ import {
   UseGuards,
   ParseUUIDPipe,
   Query,
+  Req,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -24,7 +25,7 @@ import { FilterCondition } from '../../../core/filters/interfaces/filter-conditi
 @UseGuards(SaasPermissionGuard)
 @Controller('saas/users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @SaasPermission('SAAS_USERS_CREATE')
   @Post()
@@ -63,8 +64,9 @@ export class UsersController {
   @SaasPermission('SAAS_USERS_DELETE')
   @Delete(':id')
   remove(
+    @Req() req: { user: { sub: string } },
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<{ success: boolean; message: string }> {
-    return this.usersService.remove(id);
+    return this.usersService.remove(id, req.user.sub);
   }
 }

@@ -24,7 +24,7 @@ import { TenantUser } from '../entities/tenant-user.entity';
 @Controller('business/users')
 @UseGuards(TenantAccessGuard, PermissionsGuard)
 export class TenantUsersController {
-  constructor(private readonly usersService: TenantUsersService) {}
+  constructor(private readonly usersService: TenantUsersService) { }
 
   @Post()
   @RequirePermission(AppPermissions.TENANT_USER_CREATE)
@@ -69,6 +69,7 @@ export class TenantUsersController {
     @Req() req: TenantAwareRequest,
     @Param('id') id: string,
   ): Promise<{ success: boolean; message: string }> {
-    return this.usersService.deleteUser(req.tenant!, id);
+    const currentUserId = (req as TenantAwareRequest & { user: { sub: string } }).user?.sub;
+    return this.usersService.deleteUser(req.tenant!, id, currentUserId);
   }
 }

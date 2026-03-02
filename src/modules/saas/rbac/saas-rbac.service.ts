@@ -18,7 +18,7 @@ export class SaasRbacService implements OnApplicationBootstrap {
     @InjectRepository(SaasPermission)
     private readonly permRepo: Repository<SaasPermission>,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async onApplicationBootstrap(): Promise<void> {
     this.logger.log('Iniciando verificación de RBAC Master (SaaS Dueño)...');
@@ -53,6 +53,31 @@ export class SaasRbacService implements OnApplicationBootstrap {
       );
     }
 
+    // — 1. Asegurar que GLOBAL_ADMIN siempre tenga TODOS los permisos
+    const allPermissions = await this.permRepo.find();
+    let superRole = await this.roleRepo.findOne({
+      where: { name: 'GLOBAL_ADMIN' },
+      relations: ['permissions'],
+    });
+
+    if (!superRole) {
+      superRole = this.roleRepo.create({
+        name: 'GLOBAL_ADMIN',
+        description: 'Dueño absoluto del multi-tenant',
+        permissions: allPermissions,
+      });
+      await this.roleRepo.save(superRole);
+      this.logger.log('Rol GLOBAL_ADMIN creado con todos los permisos.');
+    } else if (superRole.permissions.length !== allPermissions.length) {
+      // Sincronizar: si se agregaron permisos nuevos, actualizar el rol
+      superRole.permissions = allPermissions;
+      await this.roleRepo.save(superRole);
+      this.logger.log(
+        `Rol GLOBAL_ADMIN sincronizado: ${allPermissions.length} permisos.`,
+      );
+    }
+
+    // — 2. Crear el Super Admin si no existe
     const existingAdmin = await this.userRepo.findOne({
       where: { email: adminEmail },
     });
@@ -61,20 +86,6 @@ export class SaasRbacService implements OnApplicationBootstrap {
       this.logger.log(
         `No se encontró al Global Admin. Creando a ${adminEmail}...`,
       );
-
-      let superRole = await this.roleRepo.findOne({
-        where: { name: 'GLOBAL_ADMIN' },
-      });
-      if (!superRole) {
-        // El rol de dios tiene absolútamente todos los permisos de SaaS
-        const allPermissions = await this.permRepo.find();
-        superRole = this.roleRepo.create({
-          name: 'GLOBAL_ADMIN',
-          description: 'Dueño absoluto del multi-tenant',
-          permissions: allPermissions,
-        });
-        await this.roleRepo.save(superRole);
-      }
 
       const hashedPassword = await bcrypt.hash(adminPassword, 10);
       const newUser = this.userRepo.create({

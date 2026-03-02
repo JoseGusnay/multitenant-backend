@@ -148,7 +148,13 @@ export class UsersService {
     return result;
   }
 
-  async remove(id: string) {
+  async remove(id: string, currentUserId: string) {
+    if (id === currentUserId) {
+      throw new BadRequestException(
+        'No puedes eliminarte a ti mismo.',
+      );
+    }
+
     const user = await this.userRepo.findOne({
       where: { id },
       relations: ['roles'],

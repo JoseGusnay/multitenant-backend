@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { CreateTenantUserDto } from '../dto/create-tenant-user.dto';
 import { UpdateTenantUserDto } from '../dto/update-tenant-user.dto';
@@ -17,7 +18,7 @@ import { QueryBuilderUtils } from '../../common/utils/query-builder.util';
 
 @Injectable()
 export class TenantUsersService {
-  constructor(private readonly connectionManager: TenantConnectionManager) {}
+  constructor(private readonly connectionManager: TenantConnectionManager) { }
 
   async createUser(
     tenant: Tenant,
@@ -154,12 +155,35 @@ export class TenantUsersService {
   async deleteUser(
     tenant: Tenant,
     id: string,
+    currentUserId?: string,
   ): Promise<{ success: boolean; message: string }> {
+    if (currentUserId && id === currentUserId) {
+      throw new BadRequestException('No puedes eliminarte a ti mismo.');
+    }
+
     const connection = await this.connectionManager.getTenantConnection(tenant);
     const userRepo = connection.getRepository(TenantUser);
     const user = await this.getUserById(tenant, id);
 
-    // Eliminación física para este caso, o podrías usar isActive = false
+    // Proteger al último SUPER_ADMIN
+    const isSuperAdmin = user.roles?.some(
+      (role) => role.name === 'SUPER_ADMIN',
+    );
+    if (isSuperAdmin) {
+      const superAdminCount = await userRepo
+        .createQueryBuilder('user')
+        .innerJoin('user.roles', 'role', 'role.name = :roleName', {
+          roleName: 'SUPER_ADMIN',
+        })
+        .getCount();
+
+      if (superAdminCount <= 1) {
+        throw new BadRequestException(
+          'No puedes eliminar al único administrador principal (SUPER_ADMIN).',
+        );
+      }
+    }
+
     await userRepo.remove(user);
 
     return { success: true, message: 'Usuario eliminado correctamente.' };
