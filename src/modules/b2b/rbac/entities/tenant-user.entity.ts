@@ -23,6 +23,9 @@ export class TenantUser {
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 
+  @Column({ name: 'is_protected', default: false })
+  isProtected: boolean;
+
   @ManyToMany(() => Role)
   @JoinTable({
     name: 'tenant_user_roles',

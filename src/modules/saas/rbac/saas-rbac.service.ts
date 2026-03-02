@@ -92,11 +92,18 @@ export class SaasRbacService implements OnApplicationBootstrap {
         email: adminEmail,
         passwordHash: hashedPassword,
         roles: [superRole],
+        isProtected: true,
       });
 
       await this.userRepo.save(newUser);
       this.logger.log('Súper Administrador Master creado exitosamente.');
     } else {
+      // Asegurar que el admin seed siempre tenga isProtected
+      if (!existingAdmin.isProtected) {
+        existingAdmin.isProtected = true;
+        await this.userRepo.save(existingAdmin);
+        this.logger.log('Global Admin marcado como protegido.');
+      }
       this.logger.log(
         `Global Admin (${adminEmail}) encontrado. Omitiendo semillado.`,
       );
