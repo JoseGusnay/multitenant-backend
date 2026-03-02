@@ -53,10 +53,11 @@ export class TenantIdentificationModule implements NestModule {
     consumer
       .apply(TenantIdentificationMiddleware)
       .exclude(
-        { path: 'api/auth/(.*)', method: RequestMethod.ALL },
+        { path: 'api/auth/login/global', method: RequestMethod.ALL },
+        { path: 'api/auth/recover-password', method: RequestMethod.ALL },
+        { path: 'api/auth/reset-password', method: RequestMethod.ALL },
         { path: 'api/backoffice/(.*)', method: RequestMethod.ALL },
         { path: 'api/saas/(.*)', method: RequestMethod.ALL },
-        { path: 'auth/(.*)', method: RequestMethod.ALL },
         { path: 'backoffice/(.*)', method: RequestMethod.ALL },
         { path: 'saas/(.*)', method: RequestMethod.ALL },
       )
