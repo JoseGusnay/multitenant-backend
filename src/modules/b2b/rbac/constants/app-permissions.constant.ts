@@ -27,6 +27,12 @@ export const AppPermissions = {
   ROLE_CREATE: 'role.create',
   ROLE_UPDATE: 'role.update',
   ROLE_DELETE: 'role.delete',
+
+  // Sucursales
+  BRANCH_VIEW: 'branch.view',
+  BRANCH_CREATE: 'branch.create',
+  BRANCH_UPDATE: 'branch.update',
+  BRANCH_DELETE: 'branch.delete',
 };
 
 // Exportamos un array plano para el script Seeder automatizado

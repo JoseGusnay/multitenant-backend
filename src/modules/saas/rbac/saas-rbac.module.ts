@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
 import { SaasUser } from './entities/saas-user.entity';
 import { SaasRole } from './entities/saas-role.entity';
 import { SaasPermission } from './entities/saas-permission.entity';
@@ -10,7 +11,10 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([SaasUser, SaasRole, SaasPermission])],
+  imports: [
+    ConfigModule,
+    TypeOrmModule.forFeature([SaasUser, SaasRole, SaasPermission]),
+  ],
   providers: [SaasRbacService, RolesService, UsersService],
   exports: [SaasRbacService, RolesService, UsersService],
   controllers: [RolesController, UsersController],

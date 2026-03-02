@@ -3,7 +3,6 @@ import {
   UnauthorizedException,
   BadRequestException,
   NotFoundException,
-  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -12,6 +11,9 @@ import * as bcrypt from 'bcrypt';
 import { LoginDto } from './interfaces/login-credentials.interface';
 import { SaasUser } from '../rbac/entities/saas-user.entity';
 import { WhatsappService } from '../../notifications/whatsapp/whatsapp.service';
+import { TokenPayloadUser } from './interfaces/token-payload-user.interface';
+
+const ACCESS_DENIED_MSG = 'Solo el Creador del SaaS puede acceder aquí.';
 
 @Injectable()
 export class AuthService {
@@ -20,13 +22,13 @@ export class AuthService {
     @InjectRepository(SaasUser)
     private readonly saasUserRepo: Repository<SaasUser>,
     private readonly whatsappService: WhatsappService,
-  ) {}
+  ) { }
 
   /**
    * Simula la validación en el Master Catalog y emite un JWT firmado.
    * Pronto será ELIMINADO de aquí y movido a B2BAuthModule.
    */
-  async login(loginDto: LoginDto): Promise<any> {
+  async login(loginDto: LoginDto): Promise<{ access_token: string }> {
     if (loginDto.email === 'admin@demo.com' && loginDto.subdomain === 'demo') {
       const payload = {
         sub: 'usr_uuid_12345',
@@ -42,30 +44,34 @@ export class AuthService {
    * Endpoint de acceso oficial para dueños del SaaS validando
    * directo contra DB Maestro (Catálogo)
    */
-  async loginGlobalAdmin(loginDto: LoginDto): Promise<any> {
+  async loginGlobalAdmin(loginDto: LoginDto): Promise<{
+    access_token: string;
+    user: {
+      id: string;
+      email: string;
+      roles: string[];
+      permissions: string[];
+      countryCode: string;
+      phone: string;
+    };
+  }> {
     const user = await this.saasUserRepo.findOne({
       where: { email: loginDto.email },
       relations: ['roles', 'roles.permissions'],
     });
 
     if (!user || !user.passwordHash) {
-      throw new UnauthorizedException(
-        'Solo el Creador del SaaS puede acceder aquí.',
-      );
+      throw new UnauthorizedException(ACCESS_DENIED_MSG);
     }
 
     const passHash = user.passwordHash;
     if (typeof passHash !== 'string') {
-      throw new UnauthorizedException(
-        'Solo el Creador del SaaS puede acceder aquí.',
-      );
+      throw new UnauthorizedException(ACCESS_DENIED_MSG);
     }
 
     const passMatch = await bcrypt.compare(loginDto.password, passHash);
     if (!passMatch) {
-      throw new UnauthorizedException(
-        'Solo el Creador del SaaS puede acceder aquí.',
-      );
+      throw new UnauthorizedException(ACCESS_DENIED_MSG);
     }
 
     // Aplanar permisos a nivel Master (Para que el portal lea lo que puedes hacer)
@@ -80,7 +86,8 @@ export class AuthService {
     const payload = {
       sub: user.id,
       email: user.email,
-      isGlobalAdmin, // Mantenemos compatibilidad con tu sistema de Guard actual
+      isGlobalAdmin,
+      permissions, // ← Permisos granulares inyectados en el token
     };
 
     return {
@@ -89,6 +96,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         roles: user.roles.map((r) => r.name),
+        permissions, // ← Permisos también en el body para el frontend
         countryCode: user.countryCode,
         phone: user.phone,
       },
@@ -98,16 +106,40 @@ export class AuthService {
   /**
    * Refresca el token de un Administrador Global activo.
    */
-  async refresh(user: any): Promise<{ access_token: string }> {
+  async refresh(
+    currentUser: TokenPayloadUser,
+  ): Promise<{ access_token: string }> {
+    // Recargamos el usuario desde DB para obtener sus permisos ACTUALIZADOS.
+    // Si un admin le cambió roles/permisos, el próximo refresh los refleja.
+    const user = await this.saasUserRepo.findOne({
+      where: { id: currentUser.sub },
+      relations: ['roles', 'roles.permissions'],
+    });
+
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Sesión inválida o usuario inactivo.');
+    }
+
+    const permissions = Array.from(
+      new Set(
+        user.roles.flatMap((r) => r.permissions?.map((p) => p.name) || []),
+      ),
+    );
+    const isGlobalAdmin = user.roles.some((r) => r.name === 'GLOBAL_ADMIN');
+
     const payload = {
-      sub: user.sub,
-      email: user.username,
-      isGlobalAdmin: user.isGlobalAdmin,
+      sub: user.id,
+      email: user.email,
+      isGlobalAdmin,
+      permissions,
     };
+
     return { access_token: await this.jwtService.signAsync(payload) };
   }
 
-  async recoverPassword(email: string) {
+  async recoverPassword(
+    email: string,
+  ): Promise<{ success: boolean; message: string }> {
     const user = await this.saasUserRepo.findOne({ where: { email } });
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');
@@ -136,7 +168,11 @@ export class AuthService {
     return { success: true, message: 'Código temporal enviado por WhatsApp.' };
   }
 
-  async resetPassword(email: string, otp: string, newPassword: string) {
+  async resetPassword(
+    email: string,
+    otp: string,
+    newPassword: string,
+  ): Promise<{ success: boolean; message: string }> {
     const user = await this.saasUserRepo.findOne({ where: { email } });
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');
@@ -146,22 +182,29 @@ export class AuthService {
       throw new BadRequestException('Código de seguridad inválido.');
     }
 
-    if (new Date() > user.resetPasswordExpires!) {
+    if (!user.resetPasswordExpires || new Date() > user.resetPasswordExpires) {
       throw new BadRequestException(
         'El código ha expirado (más de 15 minutos). Solicite uno nuevo.',
       );
     }
 
     user.passwordHash = await bcrypt.hash(newPassword, 10);
-    user.resetPasswordOtp = null as any;
-    user.resetPasswordExpires = null as any;
+    user.resetPasswordOtp = null;
+    user.resetPasswordExpires = null;
 
     await this.saasUserRepo.save(user);
 
     return { success: true, message: 'Contraseña actualizada correctamente.' };
   }
 
-  async updateProfile(userId: string, countryCode: string, phone: string) {
+  async updateProfile(
+    userId: string,
+    countryCode: string,
+    phone: string,
+  ): Promise<{
+    success: boolean;
+    user: { id: string; email: string; countryCode: string; phone: string };
+  }> {
     const user = await this.saasUserRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');

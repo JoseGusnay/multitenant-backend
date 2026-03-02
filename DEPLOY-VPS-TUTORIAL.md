@@ -65,6 +65,8 @@ Una vez dentro de la consola del VPS, ejecuta:
    DB_MASTER_URL=postgres://postgres:CONTRASEÑA_SEGURA@postgres_master:5432/postgres
    JWT_SECRET=UNA_CADENA_LARGA_DE_SEGURIDAD
    NODE_ENV=production
+   SAAS_ADMIN_EMAIL=tu_correo_real@tuempresa.com
+   SAAS_ADMIN_PASSWORD=Tu_Contraseña_Ultra_Segura_123!
    ```
    *Guarda con `Ctrl+O`, `Enter`, y sal con `Ctrl+X`.*
 

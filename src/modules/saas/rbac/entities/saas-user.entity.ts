@@ -38,11 +38,11 @@ export class SaasUser {
   @Column({ nullable: true })
   phone: string;
 
-  @Column({ nullable: true })
-  resetPasswordOtp: string;
+  @Column({ type: 'varchar', nullable: true })
+  resetPasswordOtp: string | null;
 
   @Column({ type: 'timestamp', nullable: true })
-  resetPasswordExpires: Date;
+  resetPasswordExpires: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

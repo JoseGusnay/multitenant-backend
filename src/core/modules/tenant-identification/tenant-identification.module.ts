@@ -1,19 +1,10 @@
-import {
-  MiddlewareConsumer,
-  Module,
-  NestModule,
-  RequestMethod,
-} from '@nestjs/common';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+
 import { HeaderTenantResolver } from './strategies/header-tenant.resolver';
 import { SubdomainTenantResolver } from './strategies/subdomain-tenant.resolver';
+import { CombinedTenantResolver } from './strategies/combined-tenant.resolver';
 import { TenantIdentificationMiddleware } from './tenant-identification.middleware';
 import { ITenantResolver } from '../../interfaces/tenant-resolver.interface';
-import { ITenantRepository } from '../../interfaces/tenant-repository.interface';
-import {
-  Tenant,
-  TenantStatus,
-} from '../../../modules/tenants/domain/tenant.entity';
 
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TenantCatalogEntity } from './infrastructure/tenant-catalog.entity';
@@ -24,8 +15,11 @@ import { PostgresTenantRepository } from './infrastructure/postgres-tenant.repos
 const TenantResolverProvider = {
   provide: 'ITenantResolver',
   useFactory: (): ITenantResolver => {
-    // Aquí puedes decidir leer de variables de entorno (ej. process.env.TENANT_STRATEGY)
-    return new SubdomainTenantResolver();
+    // Soporte Híbrido: Intenta Subdominio -> Cae en Header 'x-tenant-id'
+    return new CombinedTenantResolver(
+      new SubdomainTenantResolver(),
+      new HeaderTenantResolver('x-tenant-id'),
+    );
   },
 };
 
@@ -53,11 +47,7 @@ export class TenantIdentificationModule implements NestModule {
     // 2. Aplicar el Middleware Guardián a las rutas, pero excluir los endpoints del Master Global.
     consumer
       .apply(TenantIdentificationMiddleware)
-      .exclude(
-        'backoffice/(.*)',
-        'auth/(.*)',
-        'saas/(.*)',
-      )
+      .exclude('backoffice/(.*)', 'auth/(.*)', 'saas/(.*)')
       .forRoutes('*');
   }
 }
