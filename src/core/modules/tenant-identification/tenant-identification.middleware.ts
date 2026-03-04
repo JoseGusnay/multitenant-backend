@@ -12,13 +12,19 @@ export class TenantIdentificationMiddleware implements NestMiddleware {
   constructor(
     @Inject('ITenantResolver') private readonly resolver: ITenantResolver,
     @Inject('ITenantRepository') private readonly repository: ITenantRepository,
-  ) {}
+  ) { }
 
   async use(
     req: TenantAwareRequest,
     res: Response,
     next: NextFunction,
   ): Promise<void> {
+    // 0. BYPASS MANUAL (A prueba de fallos con Global Prefix de NestJS)
+    const bypassRoutes = ['/api/auth/', '/api/saas/', '/api/backoffice/'];
+    if (bypassRoutes.some((route) => req.path.startsWith(route))) {
+      return next();
+    }
+
     try {
       // 1. Resolvemos el ID o Subdominio de la petición
       const identifier = await this.resolver.resolve(req);

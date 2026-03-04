@@ -49,21 +49,7 @@ const TenantRepositoryProvider = {
 })
 export class TenantIdentificationModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    // 2. Aplicar el Middleware Guardián a las rutas, pero excluir los endpoints del Master Global.
-    consumer
-      .apply(TenantIdentificationMiddleware)
-      .exclude(
-        { path: 'api/auth/login/global', method: RequestMethod.ALL },
-        { path: 'api/auth/recover-password', method: RequestMethod.ALL },
-        { path: 'api/auth/reset-password', method: RequestMethod.ALL },
-        { path: 'api/backoffice/(.*)', method: RequestMethod.ALL },
-        { path: 'api/saas/(.*)', method: RequestMethod.ALL },
-        { path: 'auth/login/global', method: RequestMethod.ALL },
-        { path: 'auth/recover-password', method: RequestMethod.ALL },
-        { path: 'auth/reset-password', method: RequestMethod.ALL },
-        { path: 'backoffice/(.*)', method: RequestMethod.ALL },
-        { path: 'saas/(.*)', method: RequestMethod.ALL },
-      )
-      .forRoutes('*');
+    // 2. Aplicar el Middleware Guardián a las rutas (el bypass interno se encarga del SaaS).
+    consumer.apply(TenantIdentificationMiddleware).forRoutes('*');
   }
 }
