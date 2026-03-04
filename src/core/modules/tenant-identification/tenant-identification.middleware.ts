@@ -20,8 +20,8 @@ export class TenantIdentificationMiddleware implements NestMiddleware {
     next: NextFunction,
   ): Promise<void> {
     // 0. BYPASS MANUAL (A prueba de fallos con Global Prefix de NestJS)
-    const bypassRoutes = ['/api/auth/', '/api/saas/', '/api/backoffice/'];
-    if (bypassRoutes.some((route) => req.path.startsWith(route))) {
+    const bypassRoutes = ['/auth/', '/saas/', '/backoffice/'];
+    if (bypassRoutes.some((route) => req.originalUrl.includes(route))) {
       return next();
     }
 
