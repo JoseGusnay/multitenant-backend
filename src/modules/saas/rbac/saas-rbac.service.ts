@@ -18,7 +18,7 @@ export class SaasRbacService implements OnApplicationBootstrap {
     @InjectRepository(SaasPermission)
     private readonly permRepo: Repository<SaasPermission>,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async onApplicationBootstrap(): Promise<void> {
     this.logger.log('Iniciando verificación de RBAC Master (SaaS Dueño)...');
@@ -98,16 +98,40 @@ export class SaasRbacService implements OnApplicationBootstrap {
       await this.userRepo.save(newUser);
       this.logger.log('Súper Administrador Master creado exitosamente.');
     } else {
+      let needsSave = false;
+
       // Asegurar que el admin seed siempre tenga isProtected
       if (!existingAdmin.isProtected) {
         existingAdmin.isProtected = true;
-        existingAdmin.roles = [superRole];
-        await this.userRepo.save(existingAdmin);
+        needsSave = true;
         this.logger.log('Global Admin marcado como protegido.');
       }
-      this.logger.log(
-        `Global Admin (${adminEmail}) encontrado. Omitiendo semillado.`,
+
+      // Asegurar que tenga el rol GLOBAL_ADMIN cargando sus relaciones reales
+      const adminWithRoles = await this.userRepo.findOne({
+        where: { id: existingAdmin.id },
+        relations: ['roles'],
+      });
+
+      const hasGlobalAdmin = adminWithRoles?.roles?.some(
+        (r) => r.name === 'GLOBAL_ADMIN',
       );
+
+      if (!hasGlobalAdmin) {
+        existingAdmin.roles = adminWithRoles?.roles
+          ? [...adminWithRoles.roles, superRole]
+          : [superRole];
+        needsSave = true;
+        this.logger.log('Rol GLOBAL_ADMIN restituido al usuario Master.');
+      }
+
+      if (needsSave) {
+        await this.userRepo.save(existingAdmin);
+      } else {
+        this.logger.log(
+          `Global Admin (${adminEmail}) encontrado y validado. Omitiendo semillado.`,
+        );
+      }
     }
   }
 }
