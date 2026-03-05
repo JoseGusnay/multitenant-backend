@@ -12,6 +12,12 @@ import { LoginDto } from './dto';
 import { SaasUser } from '../rbac/entities/saas-user.entity';
 import { WhatsappService } from '../../notifications/whatsapp/whatsapp.service';
 import { TokenPayloadUser } from './interfaces/token-payload-user.interface';
+import {
+  LoginGlobalAdminResponse,
+  MessageResponse,
+  TokenResponse,
+  UpdateProfileResponse,
+} from './interfaces/auth-response.interface';
 
 const ACCESS_DENIED_MSG = 'Solo el Creador del SaaS puede acceder aquí.';
 
@@ -28,7 +34,7 @@ export class AuthService {
    * Simula la validación en el Master Catalog y emite un JWT firmado.
    * Pronto será ELIMINADO de aquí y movido a B2BAuthModule.
    */
-  async login(loginDto: LoginDto): Promise<{ access_token: string }> {
+  async login(loginDto: LoginDto): Promise<TokenResponse> {
     if (loginDto.email === 'admin@demo.com' && loginDto.subdomain === 'demo') {
       const payload = {
         sub: 'usr_uuid_12345',
@@ -44,19 +50,9 @@ export class AuthService {
    * Endpoint de acceso oficial para dueños del SaaS validando
    * directo contra DB Maestro (Catálogo)
    */
-  async loginGlobalAdmin(loginDto: LoginDto): Promise<{
-    access_token: string;
-    user: {
-      id: string;
-      email: string;
-      firstName: string;
-      lastName: string;
-      roles: string[];
-      permissions: string[];
-      countryCode: string;
-      phone: string;
-    };
-  }> {
+  async loginGlobalAdmin(
+    loginDto: LoginDto,
+  ): Promise<LoginGlobalAdminResponse> {
     const user = await this.saasUserRepo.findOne({
       where: { email: loginDto.email },
       relations: ['roles', 'roles.permissions'],
@@ -76,7 +72,7 @@ export class AuthService {
       throw new UnauthorizedException(ACCESS_DENIED_MSG);
     }
 
-    // Aplanar permisos a nivel Master (Para que el portal lea lo que puedes hacer)
+    // Aplanar permisos a nivel Master
     const permissions = Array.from(
       new Set(
         user.roles.flatMap((r) => r.permissions?.map((p) => p.name) || []),
@@ -89,7 +85,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       isGlobalAdmin,
-      permissions, // ← Permisos granulares inyectados en el token
+      permissions,
     };
 
     return {
@@ -97,12 +93,12 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: user.firstName ?? null,
+        lastName: user.lastName ?? null,
         roles: user.roles.map((r) => r.name),
-        permissions, // ← Permisos también en el body para el frontend
-        countryCode: user.countryCode,
-        phone: user.phone,
+        permissions,
+        countryCode: user.countryCode ?? null,
+        phone: user.phone ?? null,
       },
     };
   }
@@ -110,11 +106,7 @@ export class AuthService {
   /**
    * Refresca el token de un Administrador Global activo.
    */
-  async refresh(
-    currentUser: TokenPayloadUser,
-  ): Promise<{ access_token: string }> {
-    // Recargamos el usuario desde DB para obtener sus permisos ACTUALIZADOS.
-    // Si un admin le cambió roles/permisos, el próximo refresh los refleja.
+  async refresh(currentUser: TokenPayloadUser): Promise<TokenResponse> {
     const user = await this.saasUserRepo.findOne({
       where: { id: currentUser.sub },
       relations: ['roles', 'roles.permissions'],
@@ -141,9 +133,7 @@ export class AuthService {
     return { access_token: await this.jwtService.signAsync(payload) };
   }
 
-  async recoverPassword(
-    email: string,
-  ): Promise<{ success: boolean; message: string }> {
+  async recoverPassword(email: string): Promise<MessageResponse> {
     const user = await this.saasUserRepo.findOne({ where: { email } });
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');
@@ -176,7 +166,7 @@ export class AuthService {
     email: string,
     otp: string,
     newPassword: string,
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<MessageResponse> {
     const user = await this.saasUserRepo.findOne({ where: { email } });
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');
@@ -207,17 +197,7 @@ export class AuthService {
     phone: string,
     firstName?: string,
     lastName?: string,
-  ): Promise<{
-    success: boolean;
-    user: {
-      id: string;
-      email: string;
-      firstName: string;
-      lastName: string;
-      countryCode: string;
-      phone: string;
-    };
-  }> {
+  ): Promise<UpdateProfileResponse> {
     const user = await this.saasUserRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');
@@ -235,10 +215,12 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        countryCode: user.countryCode,
-        phone: user.phone,
+        firstName: user.firstName ?? null,
+        lastName: user.lastName ?? null,
+        countryCode: user.countryCode ?? null,
+        phone: user.phone ?? null,
+        roles: [],
+        permissions: [],
       },
     };
   }
