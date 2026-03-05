@@ -72,6 +72,12 @@ export class AuthService {
       throw new UnauthorizedException(ACCESS_DENIED_MSG);
     }
 
+    if (!user.isActive) {
+      throw new UnauthorizedException(
+        'Tu cuenta está inactiva. Contacta al administrador del sistema.',
+      );
+    }
+
     // Aplanar permisos a nivel Master
     const permissions = Array.from(
       new Set(
