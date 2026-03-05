@@ -31,13 +31,11 @@ export class CreateTenantDto {
   @Expose()
   adminEmail: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({
-    message: 'La contraseña del administrador inicial es requerida',
-  })
   @Length(8, 50, { message: 'La contraseña debe tener al menos 8 caracteres' })
   @Expose()
-  adminPassword: string;
+  adminPassword?: string;
 
   @IsString()
   @IsOptional()
