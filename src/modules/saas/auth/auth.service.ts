@@ -8,7 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { LoginDto } from './interfaces/login-credentials.interface';
+import { LoginDto } from './dto';
 import { SaasUser } from '../rbac/entities/saas-user.entity';
 import { WhatsappService } from '../../notifications/whatsapp/whatsapp.service';
 import { TokenPayloadUser } from './interfaces/token-payload-user.interface';

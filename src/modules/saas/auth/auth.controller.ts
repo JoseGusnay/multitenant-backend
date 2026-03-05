@@ -1,8 +1,13 @@
 import { Body, Controller, Post, Patch, UseGuards, Req } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import type { LoginDto } from './interfaces/login-credentials.interface';
-import { GlobalAdminGuard } from './global-admin.guard';
 import { Request } from 'express';
+import { AuthService } from './auth.service';
+import { GlobalAdminGuard } from './global-admin.guard';
+import {
+  LoginDto,
+  RecoverPasswordDto,
+  ResetPasswordDto,
+  UpdateProfileDto,
+} from './dto';
 
 interface AuthenticatedRequest extends Request {
   user: { sub: string };
@@ -13,53 +18,43 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('login')
-  login(@Body() loginDto: LoginDto): Promise<{ access_token: string }> {
-    return this.authService.login(loginDto);
+  login(@Body() dto: LoginDto): Promise<{ access_token: string }> {
+    return this.authService.login(dto);
   }
 
   @Post('login/global')
   loginGlobal(
-    @Body() loginDto: LoginDto,
+    @Body() dto: LoginDto,
   ): ReturnType<AuthService['loginGlobalAdmin']> {
-    return this.authService.loginGlobalAdmin(loginDto);
+    return this.authService.loginGlobalAdmin(dto);
   }
 
   @Post('recover-password')
   recoverPassword(
-    @Body() body: { email: string },
+    @Body() dto: RecoverPasswordDto,
   ): Promise<{ success: boolean; message: string }> {
-    return this.authService.recoverPassword(body.email);
+    return this.authService.recoverPassword(dto.email);
   }
 
   @Post('reset-password')
   resetPassword(
-    @Body() body: { email: string; otp: string; newPassword: string },
+    @Body() dto: ResetPasswordDto,
   ): Promise<{ success: boolean; message: string }> {
-    return this.authService.resetPassword(
-      body.email,
-      body.otp,
-      body.newPassword,
-    );
+    return this.authService.resetPassword(dto.email, dto.otp, dto.newPassword);
   }
 
   @UseGuards(GlobalAdminGuard)
   @Patch('profile')
   updateProfile(
     @Req() req: AuthenticatedRequest,
-    @Body()
-    body: {
-      countryCode: string;
-      phone: string;
-      firstName?: string;
-      lastName?: string;
-    },
+    @Body() dto: UpdateProfileDto,
   ): ReturnType<AuthService['updateProfile']> {
     return this.authService.updateProfile(
       req.user.sub,
-      body.countryCode,
-      body.phone,
-      body.firstName,
-      body.lastName,
+      dto.countryCode ?? '',
+      dto.phone ?? '',
+      dto.firstName,
+      dto.lastName,
     );
   }
 }
