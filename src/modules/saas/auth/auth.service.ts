@@ -22,7 +22,7 @@ export class AuthService {
     @InjectRepository(SaasUser)
     private readonly saasUserRepo: Repository<SaasUser>,
     private readonly whatsappService: WhatsappService,
-  ) { }
+  ) {}
 
   /**
    * Simula la validación en el Master Catalog y emite un JWT firmado.
@@ -49,6 +49,8 @@ export class AuthService {
     user: {
       id: string;
       email: string;
+      firstName: string;
+      lastName: string;
       roles: string[];
       permissions: string[];
       countryCode: string;
@@ -95,6 +97,8 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
         roles: user.roles.map((r) => r.name),
         permissions, // ← Permisos también en el body para el frontend
         countryCode: user.countryCode,
@@ -201,9 +205,18 @@ export class AuthService {
     userId: string,
     countryCode: string,
     phone: string,
+    firstName?: string,
+    lastName?: string,
   ): Promise<{
     success: boolean;
-    user: { id: string; email: string; countryCode: string; phone: string };
+    user: {
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      countryCode: string;
+      phone: string;
+    };
   }> {
     const user = await this.saasUserRepo.findOne({ where: { id: userId } });
     if (!user) {
@@ -212,6 +225,8 @@ export class AuthService {
 
     user.countryCode = countryCode;
     user.phone = phone;
+    if (firstName !== undefined) user.firstName = firstName;
+    if (lastName !== undefined) user.lastName = lastName;
 
     await this.saasUserRepo.save(user);
 
@@ -220,6 +235,8 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
         countryCode: user.countryCode,
         phone: user.phone,
       },

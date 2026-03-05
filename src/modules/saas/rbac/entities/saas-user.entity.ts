@@ -18,6 +18,12 @@ export class SaasUser {
   @Column({ unique: true })
   email: string;
 
+  @Column({ nullable: true })
+  firstName: string;
+
+  @Column({ nullable: true })
+  lastName: string;
+
   @Column()
   passwordHash: string;
 
