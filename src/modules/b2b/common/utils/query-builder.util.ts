@@ -57,8 +57,10 @@ export class QueryBuilderUtils {
     sortField?: string,
     sortOrder: 'ASC' | 'DESC' = 'ASC',
   ): void {
+    // Normalize to uppercase — TypeORM strictly requires 'ASC' or 'DESC'
+    const direction = (sortOrder?.toUpperCase() ?? 'ASC') as 'ASC' | 'DESC';
     if (sortField) {
-      qb.orderBy(`${alias}.${sortField}`, sortOrder);
+      qb.orderBy(`${alias}.${sortField}`, direction);
     } else {
       qb.orderBy(`${alias}.createdAt`, 'DESC');
     }
