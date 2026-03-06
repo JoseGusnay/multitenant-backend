@@ -15,6 +15,10 @@ services:
       - caddy_config:/config
     depends_on:
       - api
+    # Conectamos a redes para hablar con Api y Angular
+    networks:
+      - default
+      - saas_network
 
   # Base de Datos Maestra (Catálogo y Host de Inquilinos)
   postgres_master:
@@ -61,3 +65,9 @@ volumes:
   pg_master_data:
   caddy_data:
   caddy_config:
+
+    # Red global compartida para que Caddy vea a los contenedores hosteados en otros docker-composes (Frontend)
+networks:
+  saas_network:
+    name: saas_network
+    driver: bridge
