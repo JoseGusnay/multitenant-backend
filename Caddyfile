@@ -17,16 +17,12 @@ api.osodreamer.lat {
 }
 
 # Frontend del SaaS (Maneja todos los subdominios dinámicamente)
-https:// {
-    # Evita que Caddy intente el reto Wildcard y active emisión directa en la primera visita
+*.osodreamer.lat {
+    # Evita que Caddy intente el reto Wildcard en DNS y active emisión HTTP por subdominio
     tls {
         on_demand
     }
 
-    # Atrapamos cualquier subdominio del proyecto
-    @saas host *.osodreamer.lat
-    handle @saas {
-        # El Frontend de Angular correrá en la misma red de Docker, así que usamos su nombre de contenedor
-        reverse_proxy saas_frontend_app:80
-    }
+    # El Frontend de Angular correrá en la misma red de Docker, así que usamos su nombre de contenedor
+    reverse_proxy saas_frontend_app:80
 }
