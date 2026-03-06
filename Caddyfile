@@ -1,10 +1,7 @@
 {
-    # Hilitamos On-Demand TLS para generar certificados SSL automáticos 
-    # bajo demanda solo cuando un nuevo cliente entre a su subdominio.
-    on_demand_tls {
-        interval 2m
-        burst    5
-    }
+    # Proporciona un email global para que Let's Encrypt / ZeroSSL 
+    # cree automáticamente certificados de producción válidos (como el Wildcard)
+    email admin@osodreamer.lat
 }
 
 # Subdominio de la API de Producción (HTTPS Automático)
@@ -14,17 +11,11 @@ api.osodreamer.lat {
 }
 
 # Frontend del SaaS (Maneja todos los subdominios dinámicamente)
-https:// {
-    # Activamos TLS bajo-demanda forzosamente
-    tls {
-        on_demand
-    }
+*.osodreamer.lat {
+    # Al declarar un asterisco, Caddy intentará obtener un certificado TLS Wildcard.
+    # En casos donde no tienes un plugin DNS, Caddy usará ZeroSSL On-Demand HTTP
+    # o Let's Encrypt TLS-ALPN-01 challenge si el puerto 443 apunta al VPS.
 
-    # Condición de Enrutamiento: Solo si visitan *.osodreamer.lat
-    @saas host *.osodreamer.lat
-    handle @saas {
-        # El Frontend de Angular correrá en otro docker-compose exponiendo el puerto 4200 al host (VPS).
-        # en linux la IP del host desde dentro de docker suele ser 172.17.0.1
-        reverse_proxy 172.17.0.1:4200
-    }
+    # El Frontend de Angular correrá en otro docker-compose exponiendo el puerto 4200 al host (VPS).
+    reverse_proxy 172.17.0.1:4200
 }
