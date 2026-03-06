@@ -31,5 +31,8 @@ jobs:
             # Reconstruimos las imágenes sin caché y levantamos TODOS los contenedores (api, db, caddy)
             docker compose up -d --build
             
+            # Forzamos a Caddy a recargar su archivo de configuración (Caddyfile cambia por volumen y Docker lo ignora)
+            docker compose restart caddy
+            
             # Limpiamos imágenes viejas que ya no se usan para no llenar el disco del VPS
             docker image prune -f
