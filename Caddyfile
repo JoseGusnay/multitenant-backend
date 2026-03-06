@@ -1,3 +1,12 @@
+{
+    # Hilitamos On-Demand TLS para generar certificados SSL automáticos 
+    # bajo demanda solo cuando un nuevo cliente entre a su subdominio.
+    on_demand_tls {
+        interval 2m
+        burst    5
+    }
+}
+
 # Subdominio de la API de Producción (HTTPS Automático)
 api.osodreamer.lat {
     # Redirige todo el tráfico web entrante hacia el contenedor de la API en el puerto 3000
@@ -5,9 +14,17 @@ api.osodreamer.lat {
 }
 
 # Frontend del SaaS (Maneja todos los subdominios dinámicamente)
-*.osodreamer.lat {
-    # El Frontend de Angular correrá en otro docker-compose exponiendo el puerto 4200 al host (VPS).
-    # Usamos host.docker.internal (si Caddy está configurado) o la IP del puente de docker,
-    # en linux la IP del host desde dentro de docer suele ser 172.17.0.1
-    reverse_proxy 172.17.0.1:4200
+https:// {
+    # Activamos TLS bajo-demanda forzosamente
+    tls {
+        on_demand
+    }
+
+    # Condición de Enrutamiento: Solo si visitan *.osodreamer.lat
+    @saas host *.osodreamer.lat
+    handle @saas {
+        # El Frontend de Angular correrá en otro docker-compose exponiendo el puerto 4200 al host (VPS).
+        # en linux la IP del host desde dentro de docker suele ser 172.17.0.1
+        reverse_proxy 172.17.0.1:4200
+    }
 }
