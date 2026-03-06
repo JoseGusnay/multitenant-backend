@@ -10,19 +10,23 @@
     }
 }
 
-# Subdominio de la API de Producción (HTTPS Automático)
-api.osodreamer.lat {
-    # Redirige todo el tráfico web entrante hacia el contenedor de la API en el puerto 3000
-    reverse_proxy api:3000
-}
-
-# Frontend del SaaS (Maneja todos los subdominios dinámicamente)
+# Unificamos todo bajo el manejador de host comodín para aplicar On-Demand TLS parejo
 *.osodreamer.lat {
-    # Evita que Caddy intente el reto Wildcard en DNS y active emisión HTTP por subdominio
+    # Evitamos que Caddy intente obtener un certificado Wildcard imposible (sin DNS plugin)
+    # y en su lugar emita un certificado bajo demanda por cada subdominio visitado.
     tls {
         on_demand
     }
 
-    # El Frontend de Angular correrá en la misma red de Docker, así que usamos su nombre de contenedor
-    reverse_proxy saas_frontend_app:80
+    # 1. Enrutamiento para el Backend API
+    @api host api.osodreamer.lat
+    handle @api {
+        reverse_proxy api:3000
+    }
+
+    # 2. Enrutamiento para los Tenantes (Frontend SaaS)
+    # Si no es la API, todo el resto de subdominios caen aquí
+    handle {
+        reverse_proxy saas_frontend_app:80
+    }
 }
