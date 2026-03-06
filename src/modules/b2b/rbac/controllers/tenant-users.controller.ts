@@ -24,7 +24,7 @@ import { TenantUser } from '../entities/tenant-user.entity';
 @Controller('business/users')
 @UseGuards(TenantAccessGuard, PermissionsGuard)
 export class TenantUsersController {
-  constructor(private readonly usersService: TenantUsersService) { }
+  constructor(private readonly usersService: TenantUsersService) {}
 
   @Post()
   @RequirePermission(AppPermissions.TENANT_USER_CREATE)
@@ -69,7 +69,25 @@ export class TenantUsersController {
     @Req() req: TenantAwareRequest,
     @Param('id') id: string,
   ): Promise<{ success: boolean; message: string }> {
-    const currentUserId = (req as TenantAwareRequest & { user: { sub: string } }).user?.sub;
+    const currentUserId = (
+      req as TenantAwareRequest & { user: { sub: string } }
+    ).user?.sub;
     return this.usersService.deleteUser(req.tenant!, id, currentUserId);
+  }
+
+  /** Cambio de contraseña del propio usuario autenticado */
+  @Post('me/change-password')
+  async changePassword(
+    @Req() req: TenantAwareRequest,
+    @Body() body: { currentPassword: string; newPassword: string },
+  ): Promise<{ success: boolean }> {
+    const userId = (req as TenantAwareRequest & { user: { sub: string } }).user
+      ?.sub;
+    return this.usersService.changePassword(
+      req.tenant!,
+      userId,
+      body.currentPassword,
+      body.newPassword,
+    );
   }
 }

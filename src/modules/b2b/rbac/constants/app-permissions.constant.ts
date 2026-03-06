@@ -4,6 +4,9 @@
  * por el Tenant Provisioner en la BD de cada cliente.
  */
 export const AppPermissions = {
+  // Dashboard
+  DASHBOARD_VIEW: 'dashboard.view',
+
   // Productos
   PRODUCT_VIEW: 'product.view',
   PRODUCT_CREATE: 'product.create',
@@ -15,6 +18,22 @@ export const AppPermissions = {
   CATEGORY_CREATE: 'category.create',
   CATEGORY_UPDATE: 'category.update',
   CATEGORY_DELETE: 'category.delete',
+
+  // Órdenes / POS
+  ORDER_VIEW: 'order.view',
+  ORDER_CREATE: 'order.create',
+  ORDER_UPDATE: 'order.update',
+  ORDER_DELETE: 'order.delete',
+
+  // Clientes
+  CUSTOMER_VIEW: 'customer.view',
+  CUSTOMER_CREATE: 'customer.create',
+  CUSTOMER_UPDATE: 'customer.update',
+  CUSTOMER_DELETE: 'customer.delete',
+
+  // Reportes
+  REPORT_VIEW: 'report.view',
+  REPORT_EXPORT: 'report.export',
 
   // Usuarios del Tenant
   TENANT_USER_VIEW: 'tenant_user.view',

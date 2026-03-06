@@ -18,7 +18,7 @@ import { QueryBuilderUtils } from '../../common/utils/query-builder.util';
 
 @Injectable()
 export class TenantUsersService {
-  constructor(private readonly connectionManager: TenantConnectionManager) { }
+  constructor(private readonly connectionManager: TenantConnectionManager) {}
 
   async createUser(
     tenant: Tenant,
@@ -196,7 +196,28 @@ export class TenantUsersService {
     }
 
     await userRepo.remove(user);
-
     return { success: true, message: 'Usuario eliminado correctamente.' };
+  }
+
+  async changePassword(
+    tenant: Tenant,
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ success: boolean }> {
+    const connection = await this.connectionManager.getTenantConnection(tenant);
+    const userRepo = connection.getRepository(TenantUser);
+
+    const user = await userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuario no encontrado.');
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) {
+      throw new BadRequestException('La contraseña actual es incorrecta.');
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    await userRepo.save(user);
+    return { success: true };
   }
 }

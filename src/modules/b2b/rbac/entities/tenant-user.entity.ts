@@ -3,6 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  UpdateDateColumn,
   ManyToMany,
   JoinTable,
 } from 'typeorm';
@@ -17,6 +18,12 @@ export class TenantUser {
   @Column({ unique: true })
   email: string;
 
+  @Column({ name: 'first_name', type: 'varchar', nullable: true })
+  firstName: string | null;
+
+  @Column({ name: 'last_name', type: 'varchar', nullable: true })
+  lastName: string | null;
+
   @Column({ name: 'password_hash' })
   passwordHash: string;
 
@@ -25,6 +32,12 @@ export class TenantUser {
 
   @Column({ name: 'is_protected', default: false })
   isProtected: boolean;
+
+  get fullName(): string {
+    return (
+      [this.firstName, this.lastName].filter(Boolean).join(' ') || this.email
+    );
+  }
 
   @ManyToMany(() => Role)
   @JoinTable({
@@ -45,4 +58,7 @@ export class TenantUser {
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 }

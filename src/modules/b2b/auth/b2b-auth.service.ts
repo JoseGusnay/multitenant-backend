@@ -180,4 +180,27 @@ export class B2bAuthService {
 
     return { access_token: await this.jwtService.signAsync(payload) };
   }
+
+  /**
+   * Devuelve el perfil completo del usuario autenticado.
+   * Se usa en el frontend para mostrar datos del usuario en la UI.
+   */
+  async getMe(userId: string): Promise<Omit<TenantUser, 'passwordHash'>> {
+    const tenantUserRepo = this.tenantDataSource.getRepository(TenantUser);
+
+    const user = await tenantUserRepo.findOne({
+      where: { id: userId },
+      relations: ['roles', 'branches'],
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuario no encontrado.');
+    }
+
+    // Excluir passwordHash de la respuesta
+    const { passwordHash: _pw, ...userWithoutPassword } =
+      user as unknown as Record<string, unknown> & { passwordHash: string };
+    void _pw;
+    return userWithoutPassword as unknown as Omit<TenantUser, 'passwordHash'>;
+  }
 }

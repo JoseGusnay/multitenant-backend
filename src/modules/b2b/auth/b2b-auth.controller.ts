@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Get,
   Body,
   Req,
   BadRequestException,
@@ -85,5 +86,19 @@ export class B2bAuthController {
       tenantId: currentUser.tenantId ?? '',
       branchId: currentUser.branchId,
     });
+  }
+
+  /**
+   * Devuelve el perfil completo del usuario autenticado.
+   * El token debe tener branchId (paso 2 completado).
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Get('me')
+  async getMe(
+    @Req() req: Record<string, unknown>,
+  ): Promise<Omit<TenantUser, 'passwordHash'>> {
+    const tenantReq = req as unknown as TenantAwareRequest;
+    const currentUser = tenantReq.user as TokenPayloadUser;
+    return this.authService.getMe(currentUser.sub);
   }
 }
