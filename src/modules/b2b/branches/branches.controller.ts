@@ -11,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { TenantAccessGuard } from '../../../core/guards/tenant-access.guard';
 import { PermissionsGuard } from '../rbac/guards/permissions.guard';
 import { RequirePermission } from '../rbac/decorators/require-permission.decorator';
 import { AppPermissions } from '../rbac/constants/app-permissions.constant';
@@ -18,7 +19,7 @@ import { BranchesService } from './branches.service';
 import { Branch } from './branch.entity';
 import { AdvancedQueryDto } from '../common/dtos/advanced-query.dto';
 
-@UseGuards(AuthGuard('jwt'), PermissionsGuard)
+@UseGuards(AuthGuard('jwt'), TenantAccessGuard, PermissionsGuard)
 @Controller('business/branches')
 export class BranchesController {
   constructor(private readonly branchesService: BranchesService) {}

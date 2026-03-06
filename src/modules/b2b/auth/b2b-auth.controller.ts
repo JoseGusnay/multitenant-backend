@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { TenantAccessGuard } from '../../../core/guards/tenant-access.guard';
 import { B2bAuthService } from './b2b-auth.service';
 import type { TenantAwareRequest } from '../../../core/interfaces/tenant-aware-request.interface';
 import type { LoginDto } from '../../saas/auth/interfaces/login-credentials.interface';
@@ -49,7 +50,7 @@ export class B2bAuthController {
    * Paso 2: El usuario elige su sucursal de trabajo.
    * Emite el token definitivo con branchId sellado.
    */
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), TenantAccessGuard)
   @Post('select-branch')
   async selectBranch(
     @Body() body: SelectBranchDto,
@@ -74,7 +75,7 @@ export class B2bAuthController {
   /**
    * Refresca el token recargando permisos desde la DB, preservando la sucursal activa.
    */
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), TenantAccessGuard)
   @Post('refresh')
   async refresh(
     @Req() req: Record<string, unknown>,
@@ -92,7 +93,7 @@ export class B2bAuthController {
    * Devuelve el perfil completo del usuario autenticado.
    * El token debe tener branchId (paso 2 completado).
    */
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), TenantAccessGuard)
   @Get('me')
   async getMe(
     @Req() req: Record<string, unknown>,
