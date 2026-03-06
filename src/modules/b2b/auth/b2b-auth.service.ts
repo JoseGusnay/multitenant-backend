@@ -124,7 +124,16 @@ export class B2bAuthService {
       relations: ['branches'],
     });
 
-    const hasAccess = user?.branches?.some((b) => b.id === branchId) ?? false;
+    if (!user) {
+      throw new UnauthorizedException('Usuario no encontrado en este tenant.');
+    }
+
+    // El admin protegido (propietario inicial del tenant) tiene acceso irrestricto a todas las sucursales.
+    // Los empleados normales solo pueden acceder a las sucursales explícitamente asignadas.
+    const isTenantAdmin = user.isProtected;
+    const hasAccess =
+      isTenantAdmin || user.branches?.some((b) => b.id === branchId) || false;
+
     if (!hasAccess) {
       throw new UnauthorizedException(
         'No tienes acceso a la sucursal seleccionada.',
