@@ -31,8 +31,14 @@ jobs:
             # Reconstruimos las imágenes sin caché y levantamos TODOS los contenedores (api, db, caddy)
             docker compose up -d --build
             
-            # Forzamos a Caddy a recargar su archivo de configuración (Caddyfile cambia por volumen y Docker lo ignora)
+            # Forzamos a Caddy a recargar su archivo de configuración
             docker compose restart caddy
+            
+            # DIAGNÓSTICO: Imprimir el estado de la red y los logs de Caddy para encontrar el ERR_CONNECTION_REFUSED
+            echo "--- DIAGNOSTICS: RED SAAS ---"
+            docker network inspect multitenant-backend_saas_network || docker network inspect saas_network || true
+            echo "--- DIAGNOSTICS: LOGS DE CADDY ---"
+            docker logs --tail 50 multitenant_proxy
             
             # Limpiamos imágenes viejas que ya no se usan para no llenar el disco del VPS
             docker image prune -f
