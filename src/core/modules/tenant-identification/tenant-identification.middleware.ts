@@ -4,7 +4,6 @@ import type { ITenantResolver } from '../../interfaces/tenant-resolver.interface
 import type { ITenantRepository } from '../../interfaces/tenant-repository.interface';
 import { InvalidTenantStatusException } from '../../../modules/tenants/domain/exceptions/invalid-tenant-status.exception';
 import { TenantNotFoundException } from '../../../modules/tenants/domain/exceptions/tenant-not-found.exception';
-import { Tenant } from '../../../modules/tenants/domain/tenant.entity';
 import { TenantAwareRequest } from '../../interfaces/tenant-aware-request.interface';
 
 @Injectable()
@@ -12,7 +11,7 @@ export class TenantIdentificationMiddleware implements NestMiddleware {
   constructor(
     @Inject('ITenantResolver') private readonly resolver: ITenantResolver,
     @Inject('ITenantRepository') private readonly repository: ITenantRepository,
-  ) { }
+  ) {}
 
   async use(
     req: TenantAwareRequest,
@@ -20,7 +19,7 @@ export class TenantIdentificationMiddleware implements NestMiddleware {
     next: NextFunction,
   ): Promise<void> {
     // 0. BYPASS MANUAL (A prueba de fallos con Global Prefix de NestJS)
-    const bypassRoutes = ['/auth/', '/saas/', '/backoffice/'];
+    const bypassRoutes = ['/saas/', '/backoffice/'];
     if (bypassRoutes.some((route) => req.originalUrl.includes(route))) {
       return next();
     }
