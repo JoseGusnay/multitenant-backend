@@ -3,3 +3,11 @@ api.osodreamer.lat {
     # Redirige todo el tráfico web entrante hacia el contenedor de la API en el puerto 3000
     reverse_proxy api:3000
 }
+
+# Frontend del SaaS (Maneja todos los subdominios dinámicamente)
+*.osodreamer.lat {
+    # El Frontend de Angular correrá en otro docker-compose exponiendo el puerto 4200 al host (VPS).
+    # Usamos host.docker.internal (si Caddy está configurado) o la IP del puente de docker,
+    # en linux la IP del host desde dentro de docer suele ser 172.17.0.1
+    reverse_proxy 172.17.0.1:4200
+}
