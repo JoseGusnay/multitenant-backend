@@ -199,7 +199,8 @@ export class TenantProvisioningService {
         emit('seeding_done', 'Dueño sembrado con éxito en el Inquilino.');
 
         if (tenant.phone) {
-          await this.whatsappService.sendTenantCredentials(tenant.phone, {
+          const fullPhone = this.getInternationalPhone(tenant.countryCode, tenant.phone);
+          await this.whatsappService.sendTenantCredentials(fullPhone, {
             tenantName: tenant.name,
             subdomain: tenant.subdomain,
             adminEmail: dto.adminEmail,
@@ -360,7 +361,8 @@ export class TenantProvisioningService {
     user.passwordHash = hashedPassword;
     await userRepo.save(user);
 
-    await this.whatsappService.sendTenantCredentials(tenant.phone, {
+    const fullPhone = this.getInternationalPhone(tenant.countryCode, tenant.phone);
+    await this.whatsappService.sendTenantCredentials(fullPhone, {
       tenantName: tenant.name,
       subdomain: tenant.subdomain,
       adminEmail: tenant.adminEmail,
@@ -370,4 +372,18 @@ export class TenantProvisioningService {
 
     return { success: true };
   }
+
+  /**
+   * Helper utility to normalize the phone number for WhatsApp
+   */
+  private getInternationalPhone(countryCode: string | null | undefined, phone: string): string {
+    const cc = (countryCode || '').replace(/\D/g, '');
+    let ph = phone.replace(/\D/g, '');
+    // If a country code exists and the local phone starts with '0' (e.g. 093 in Ecuador), remove the leading 0
+    if (cc && ph.startsWith('0')) {
+      ph = ph.substring(1);
+    }
+    return cc ? `${cc}${ph}` : ph;
+  }
 }
+
