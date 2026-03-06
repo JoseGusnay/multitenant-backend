@@ -1,15 +1,11 @@
-import {
-  MiddlewareConsumer,
-  Module,
-  NestModule,
-  RequestMethod,
-} from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 
 import { HeaderTenantResolver } from './strategies/header-tenant.resolver';
 import { SubdomainTenantResolver } from './strategies/subdomain-tenant.resolver';
 import { CombinedTenantResolver } from './strategies/combined-tenant.resolver';
 import { TenantIdentificationMiddleware } from './tenant-identification.middleware';
 import { ITenantResolver } from '../../interfaces/tenant-resolver.interface';
+import { PublicTenantController } from './controllers/public-tenant.controller';
 
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TenantCatalogEntity } from './infrastructure/tenant-catalog.entity';
@@ -45,6 +41,7 @@ const TenantRepositoryProvider = {
     TenantRepositoryProvider,
     TenantIdentificationMiddleware,
   ],
+  controllers: [PublicTenantController],
   exports: ['ITenantResolver', 'ITenantRepository'],
 })
 export class TenantIdentificationModule implements NestModule {
