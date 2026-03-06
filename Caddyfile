@@ -5,9 +5,9 @@
 
     # Habilitamos la creación de certificados automáticos bajo-demanda 
     # (indispensable para subdominios infinitos tipo SaaS sin plugin DNS)
+    # Nota: En versiones recientes de Caddy, 'interval' y 'burst' fueron deprecados.
     on_demand_tls {
-        interval 2m
-        burst    5
+        # ask http://api:3000/health # Opcional en el futuro: endpoint para aprobar subdominios
     }
 }
 
