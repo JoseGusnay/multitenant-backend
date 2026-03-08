@@ -13,7 +13,7 @@ export class PublicTenantController {
   constructor(
     @Inject('ITenantRepository')
     private readonly tenantRepository: ITenantRepository,
-  ) {}
+  ) { }
 
   /**
    * Endpoint específico para el 'ask' de Caddy (On-Demand TLS).
@@ -23,10 +23,19 @@ export class PublicTenantController {
   async validateDomain(@Query('domain') domain: string): Promise<void> {
     if (!domain) throw new NotFoundException();
 
-    // Extraemos el subdominio (ej: oso.osodreamer.lat -> oso)
-    const parts = domain.split('.');
+    const normalizedDomain = domain.toLowerCase();
+
+    // Whitelist de dominios del sistema (Apex y API)
+    // Esto permite que el dueño del SaaS y la API maestra tengan SSL siempre.
+    const systemDomains = ['osodreamer.lat', 'api.osodreamer.lat'];
+    if (systemDomains.some((sys) => normalizedDomain.endsWith(sys))) {
+      return; // 200 OK - Autorizado para el sistema
+    }
+
+    // Lógica para inquilinos dinámicos (procesamiento de subdominios)
+    const parts = normalizedDomain.split('.');
     const subdomain =
-      parts.length >= 3 ? parts[0] : domain.replace('.localhost', '');
+      parts.length >= 3 ? parts[0] : normalizedDomain.replace('.localhost', '');
 
     const tenant = await this.tenantRepository.getTenantConfig(subdomain);
 
