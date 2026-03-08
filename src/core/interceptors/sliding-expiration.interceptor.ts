@@ -6,8 +6,8 @@ import {
   Logger,
   Scope,
 } from '@nestjs/common';
-import { ModuleRef } from '@nestjs/core';
-import { Observable, from, switchMap } from 'rxjs';
+import { ModuleRef, ContextIdFactory } from '@nestjs/core';
+import { Observable, switchMap } from 'rxjs';
 import { AuthService } from '../../modules/saas/auth/auth.service';
 import { B2bAuthService } from '../../modules/b2b/auth/b2b-auth.service';
 import { Response } from 'express';
@@ -18,7 +18,7 @@ export class SlidingExpirationInterceptor implements NestInterceptor {
 
   constructor(private readonly moduleRef: ModuleRef) {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const request = context.switchToHttp().getRequest();
     const response = context.switchToHttp().getResponse<Response>();
     const user = request.user;
@@ -39,18 +39,19 @@ export class SlidingExpirationInterceptor implements NestInterceptor {
       switchMap(async (data) => {
         try {
           let refreshPromise: Promise<{ access_token: string }> | null = null;
+          const contextId = ContextIdFactory.getByRequest(request);
 
           if (user.isGlobalAdmin) {
             const saasAuthService = await this.moduleRef.resolve(
               AuthService,
-              undefined,
+              contextId,
               { strict: false },
             );
             refreshPromise = saasAuthService.refresh(user);
           } else if (user.tenantId) {
             const b2bAuthService = await this.moduleRef.resolve(
               B2bAuthService,
-              undefined,
+              contextId,
               { strict: false },
             );
             refreshPromise = b2bAuthService.refresh(user);
@@ -75,7 +76,7 @@ export class SlidingExpirationInterceptor implements NestInterceptor {
             error,
           );
         }
-        return data;
+        return data as unknown;
       }),
     );
   }

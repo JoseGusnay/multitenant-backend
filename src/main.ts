@@ -1,8 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
-import { TransformInterceptor } from './core/interceptors/transform.interceptor';
-import { GlobalExceptionFilter } from './core/filters/global-exception.filter';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -18,8 +17,16 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  // Habilitar CORS para permitir conexión del frontend (Flutter Web, etc)
-  app.enableCors();
+  // Configurar cookie-parser antes de inicializar otras rutas
+  app.use(cookieParser());
+
+  // Habilitar CORS para permitir envío de cookies (credentials: true)
+  app.enableCors({
+    origin: true, // Idealmente en prod restringir a los dominios del SaaS
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id', 'Accept'],
+    exposedHeaders: ['x-tenant-id'],
+  });
 
   await app.listen(process.env.PORT ?? 3000);
 }

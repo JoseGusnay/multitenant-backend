@@ -44,6 +44,7 @@ export class TenantConnectionManager implements OnApplicationShutdown {
       migrations: [
         __dirname + '/../../../database/migrations/tenant/*{.ts,.js}',
       ],
+      migrationsRun: true, // AUTO-EJECUTA LAS MIGRACIONES PENDIENTES DEL TENANT AL CONECTAR
       synchronize: false, // NUNCA usar en prod
       poolSize: 10,
       extra: {

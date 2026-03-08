@@ -4,6 +4,7 @@ import {
   Param,
   Inject,
   NotFoundException,
+  Query,
 } from '@nestjs/common';
 import type { ITenantRepository } from '../../../interfaces/tenant-repository.interface';
 
@@ -13,6 +14,27 @@ export class PublicTenantController {
     @Inject('ITenantRepository')
     private readonly tenantRepository: ITenantRepository,
   ) {}
+
+  /**
+   * Endpoint específico para el 'ask' de Caddy (On-Demand TLS).
+   * Caddy envía ?domain=subdominio.dominio.com
+   */
+  @Get('validate-domain')
+  async validateDomain(@Query('domain') domain: string): Promise<void> {
+    if (!domain) throw new NotFoundException();
+
+    // Extraemos el subdominio (ej: oso.osodreamer.lat -> oso)
+    const parts = domain.split('.');
+    const subdomain =
+      parts.length >= 3 ? parts[0] : domain.replace('.localhost', '');
+
+    const tenant = await this.tenantRepository.getTenantConfig(subdomain);
+
+    if (!tenant || !tenant.isOperational()) {
+      throw new NotFoundException();
+    }
+    // Si llegamos aquí, Caddy recibe un 200 OK y emite el certificado
+  }
 
   @Get('check/:subdomain')
   async checkTenant(@Param('subdomain') subdomain: string): Promise<{

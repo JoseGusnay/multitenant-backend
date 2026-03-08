@@ -4,9 +4,9 @@
     email admin@osodreamer.lat
 
     # Caddy exige un endpoint de permiso para generar certificados al vuelo y evitar spam.
-    # Usaremos el propio contenedor de Angular, ya que su Nginx siempre devuelve 200 OK, autorizando automáticamente.
+    # Usaremos el backend para validar que el subdominio realmente existe en la BD maestra.
     on_demand_tls {
-        ask http://saas_frontend_app:80
+        ask http://api:3000/api/public/tenant/validate-domain
     }
 }
 

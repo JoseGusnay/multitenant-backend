@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SubscriptionPlansService } from './modules/saas/plans/subscription-plans.service';
 
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
   const app = await NestFactory.createApplicationContext(AppModule);
   const plansService = app.get(SubscriptionPlansService);
 
@@ -43,7 +43,7 @@ async function bootstrap() {
       await plansService.findOne(planData.id);
       console.log(`Plan ${planData.id} ya existe. Actualizando...`);
       await plansService.update(planData.id, planData);
-    } catch (e) {
+    } catch {
       console.log(`Creando plan ${planData.id}...`);
       await plansService.create(planData);
     }
@@ -53,4 +53,7 @@ async function bootstrap() {
   await app.close();
 }
 
-bootstrap();
+bootstrap().catch((err: unknown) => {
+  console.error('Error seeding plans', err);
+  process.exit(1);
+});

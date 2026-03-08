@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   NotFoundException,
+  BadRequestException,
   Inject,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -10,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { LoginDto } from '../../saas/auth/interfaces/login-credentials.interface';
 import { TenantUser } from '../rbac/entities/tenant-user.entity';
 import { Branch } from '../branches/branch.entity';
+import { WhatsappService } from '../../notifications/whatsapp/whatsapp.service';
 
 const INVALID_CREDENTIALS_MSG =
   'Credenciales inválidas en este entorno de trabajo.';
@@ -21,7 +23,8 @@ export class B2bAuthService {
     // Inyectamos la conexión DINÁMICA real del inquilino (Scope.REQUEST)
     @Inject('TENANT_CONNECTION')
     private readonly tenantDataSource: DataSource,
-  ) {}
+    private readonly whatsappService: WhatsappService,
+  ) { }
 
   /**
    * Paso 1 del login: Valida credenciales y devuelve la lista de sucursales disponibles.
@@ -143,6 +146,7 @@ export class B2bAuthService {
     // Token definitivo con branchId sellado
     const payload = {
       sub: userId,
+      email: user.email,
       tenantId,
       branchId,
       isGlobalAdmin: false,
@@ -211,5 +215,73 @@ export class B2bAuthService {
       user as unknown as Record<string, unknown> & { passwordHash: string };
     void _pw;
     return userWithoutPassword as unknown as Omit<TenantUser, 'passwordHash'>;
+  }
+
+  /**
+   * Genera un OTP y lo envía por WhatsApp.
+   */
+  async recoverPassword(email: string): Promise<{ success: boolean; message: string }> {
+    const tenantUserRepo = this.tenantDataSource.getRepository(TenantUser);
+
+    const user = await tenantUserRepo.findOne({ where: { email } });
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+    if (!user.phone) {
+      throw new BadRequestException(
+        'El usuario no tiene un número de teléfono configurado para recibir alertas de WhatsApp.',
+      );
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetPasswordOtp = otp;
+    user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+    await tenantUserRepo.save(user);
+
+    const sent = await this.whatsappService.sendOtpMessage(
+      `${user.countryCode || ''}${user.phone}`,
+      otp,
+    );
+    if (!sent) {
+      throw new BadRequestException(
+        'No se pudo enviar el mensaje por WhatsApp. Revisar logs del sistema.',
+      );
+    }
+
+    return { success: true, message: 'Código temporal enviado por WhatsApp.' };
+  }
+
+  /**
+   * Valida el OTP y cambia la contraseña.
+   */
+  async resetPassword(
+    email: string,
+    otp: string,
+    newPassword: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const tenantUserRepo = this.tenantDataSource.getRepository(TenantUser);
+
+    const user = await tenantUserRepo.findOne({ where: { email } });
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    if (!user.resetPasswordOtp || user.resetPasswordOtp !== otp) {
+      throw new BadRequestException('Código de seguridad inválido.');
+    }
+
+    if (!user.resetPasswordExpires || new Date() > user.resetPasswordExpires) {
+      throw new BadRequestException(
+        'El código ha expirado (más de 15 minutos). Solicite uno nuevo.',
+      );
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    user.resetPasswordOtp = null;
+    user.resetPasswordExpires = null;
+
+    await tenantUserRepo.save(user);
+
+    return { success: true, message: 'Contraseña actualizada correctamente.' };
   }
 }

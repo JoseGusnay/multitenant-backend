@@ -14,6 +14,13 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
   private isReady = false;
 
   onModuleInit() {
+    if (process.env.ENABLE_WHATSAPP !== 'true') {
+      this.logger.warn(
+        'WhatsApp Client deshabilitado por configuración (ENABLE_WHATSAPP=false). No se generará el QR.',
+      );
+      return;
+    }
+
     this.logger.log('Inicializando cliente de WhatsApp...');
 
     this.client = new Client({

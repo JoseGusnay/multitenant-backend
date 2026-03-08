@@ -4,11 +4,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { B2bAuthService } from './b2b-auth.service';
 import { B2bAuthController } from './b2b-auth.controller';
 import { TenantConnectionModule } from '../../../core/modules/tenant-connection/tenant-connection.module';
+import { NotificationsModule } from '../../notifications/notifications.module';
 
 @Module({
   imports: [
     // Importamos TenantConnectionModule para poder usar el Scope.REQUEST del DataSource Inyectado
     TenantConnectionModule,
+    NotificationsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -22,4 +24,4 @@ import { TenantConnectionModule } from '../../../core/modules/tenant-connection/
   controllers: [B2bAuthController],
   exports: [B2bAuthService],
 })
-export class B2bAuthModule {}
+export class B2bAuthModule { }

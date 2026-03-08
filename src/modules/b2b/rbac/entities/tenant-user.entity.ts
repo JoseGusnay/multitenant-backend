@@ -33,6 +33,18 @@ export class TenantUser {
   @Column({ name: 'is_protected', default: false })
   isProtected: boolean;
 
+  @Column({ name: 'country_code', type: 'varchar', nullable: true })
+  countryCode: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  phone: string | null;
+
+  @Column({ name: 'reset_password_otp', type: 'varchar', nullable: true })
+  resetPasswordOtp: string | null;
+
+  @Column({ name: 'reset_password_expires', type: 'timestamp', nullable: true })
+  resetPasswordExpires: Date | null;
+
   get fullName(): string {
     return (
       [this.firstName, this.lastName].filter(Boolean).join(' ') || this.email

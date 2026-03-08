@@ -7,6 +7,7 @@ import { CategoryEntity } from '../modules/b2b/categories/category.entity';
 import { Role } from '../modules/b2b/rbac/entities/role.entity';
 import { Permission } from '../modules/b2b/rbac/entities/permission.entity';
 import { TenantUser } from '../modules/b2b/rbac/entities/tenant-user.entity';
+import { Branch } from '../modules/b2b/branches/branch.entity';
 
 // Cargamos variables de entorno por si se necesitan (es buena práctica)
 config();
@@ -28,7 +29,7 @@ export default new DataSource({
 
   // Incluimos SOLAMENTE las entidades que vivirán dentro de cada Tenant.
   // NO INCLUIR AQUÍ LAS ENTIDADES MASTER (Admin, Tenants Globales).
-  entities: [ProductEntity, CategoryEntity, Role, Permission, TenantUser],
+  entities: [ProductEntity, CategoryEntity, Role, Permission, TenantUser, Branch],
 
   // Carpeta donde se guardarán los scripts generados ("Migración Zero")
   migrations: [resolve(__dirname, 'migrations/tenant/*{.ts,.js}')],
