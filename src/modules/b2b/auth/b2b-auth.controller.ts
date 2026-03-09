@@ -14,6 +14,7 @@ import { TenantAccessGuard } from '../../../core/guards/tenant-access.guard';
 import { B2bAuthService } from './b2b-auth.service';
 import { RecoverPasswordDto } from './dto/recover-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { OptionalJwtAuthGuard } from '../../../core/guards/optional-jwt-auth.guard';
 import type { TenantAwareRequest } from '../../../core/interfaces/tenant-aware-request.interface';
 import type { LoginDto } from '../../saas/auth/interfaces/login-credentials.interface';
 import type { TokenPayloadUser } from '../../saas/auth/interfaces/token-payload-user.interface';
@@ -168,6 +169,7 @@ export class B2bAuthController {
    * Devuelve el contexto inicial de la sesión: Información del Tenant + Usuario (si está autenticado).
    * Este endpoint es fundamental para la optimización del arranque de la SPA.
    */
+  @UseGuards(OptionalJwtAuthGuard)
   @Get('session-context')
   async getSessionContext(@Req() req: Record<string, unknown>): Promise<{
     isAuthenticated: boolean;
