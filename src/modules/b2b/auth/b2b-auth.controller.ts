@@ -177,6 +177,8 @@ export class B2bAuthController {
       subdomain: string;
       locale: string;
       status: string;
+      exists: boolean;
+      isOperational: boolean;
     };
     user: Omit<TenantUser, 'passwordHash'> | null;
   }> {
