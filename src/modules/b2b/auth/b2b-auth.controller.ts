@@ -29,7 +29,7 @@ class SelectBranchDto {
 
 @Controller('business/auth')
 export class B2bAuthController {
-  constructor(private readonly authService: B2bAuthService) {}
+  constructor(private readonly authService: B2bAuthService) { }
 
   /**
    * Paso 1: Valida credenciales y devuelve lista de sucursales disponibles.
@@ -210,6 +210,8 @@ export class B2bAuthController {
         subdomain: tenant.subdomain,
         locale: tenant.locale,
         status: tenant.status,
+        exists: true,
+        isOperational: tenant.isOperational(),
       },
       user: userProfile,
     };
