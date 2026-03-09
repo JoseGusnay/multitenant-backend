@@ -10,8 +10,8 @@
     }
 }
 
-# Unificamos todo bajo el manejador de host comodín para aplicar On-Demand TLS parejo
-*.osodreamer.lat {
+# Manejador para subdominios y el dominio raíz apex
+*.osodreamer.lat, osodreamer.lat {
     # Evitamos que Caddy intente obtener un certificado Wildcard imposible (sin DNS plugin)
     # y en su lugar emita un certificado bajo demanda por cada subdominio visitado.
     tls {
